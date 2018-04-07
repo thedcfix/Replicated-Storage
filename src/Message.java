@@ -14,6 +14,7 @@ public class Message implements Serializable{
 	public boolean isAck;
 	public boolean isRetransmit;
 	public long cycle;
+	public boolean requestedAck;
 	
 	public Message(String type) {
 		this.type = type;
@@ -43,6 +44,7 @@ public class Message implements Serializable{
 		this.isAck = m.isAck;
 		this.isRetransmit = m.isRetransmit;
 		this.cycle = m.cycle;
+		this.requestedAck = m.requestedAck;
 	}
 	
 	public boolean equals(Message m) {

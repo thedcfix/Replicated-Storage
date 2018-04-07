@@ -366,10 +366,17 @@ public class Receiver extends Thread {
 			
 			if (number == servers.size()) {
 				// richiedo gli ack
-				Message request = new Message(find(receivedMessages.get(i)));
-				request.type = "send";
+				Message okMsg = receivedMessages.get(i);
 				
-				sendMulticast(request, true);
+				// invio le richieste di ack una sola volta
+				if (!okMsg.requestedAck) {
+					okMsg.requestedAck = true;
+					
+					Message request = new Message(find(receivedMessages.get(i)));
+					request.type = "send";
+					
+					sendMulticast(request, true);
+				}
 				
 				//aggiorno il contatore per evitare di mandare lo stesso messaggio troppe volte
 				i += servers.size();
