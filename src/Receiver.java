@@ -193,9 +193,8 @@ public class Receiver extends Thread {
 		}
 	}
 	
-	private void manageRetransmissions() throws IOException, InterruptedException {
+	private void manageRetransmissions(List<Message> acks) throws IOException, InterruptedException {
 		
-		List<Message> acks = extractAckSublist();
 		@SuppressWarnings("unchecked")
 		HashSet<String> IPs = (HashSet<String>) ((HashSet<String>) servers).clone();
 		
@@ -346,6 +345,19 @@ public class Receiver extends Thread {
 		return counter;
 	}
 	
+	private List<Message> extractAckList(Message msg) {
+		
+		List<Message> list = new ArrayList<>();
+		
+		for (Message m : ackList) {
+			if (m.equalsLite(msg)){
+				list.add(new Message(m));
+			}
+		}
+		
+		return list;
+	}
+	
 	private Message find(Message msg) {
 		for (Message m : queue) {
 			if (m.equalsLite(msg)) {
@@ -382,11 +394,38 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	private void handleRetransmissions(long cycle, int max) throws IOException, InterruptedException {
+		if(queue.size() != 0) {
+			for (Message m : queue) {
+				if(cycle >= m.cycle + max) {
+					if (count(m) == servers.size()) {
+						// il messaggio ha già tutti gli ok e quindi mancano degli ack
+						manageRetransmissions(extractAckList(m));
+						System.out.println("E' stata richiesta la ritrasmissione di un ack relativo a:");m.print();
+					}
+					else {
+						// mancano dei messaggi di ok quindi ritrasmetto tutto
+						Message request = new Message(m);
+						request.isAck = false;
+						request.requestedAck = false;
+						
+						sendMulticast(request, false);
+						
+						System.out.println("E' stata richiesta la ritrasmissione di un messaggio di ok relativo a:");m.print();
+					}
+					
+					// aggiorno il valore del cycle
+					m.cycle = cycle;
+				}
+			}
+		}
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
-		boolean busy = false;
 		long cycle = 0;
+		int cyclesToRetransmit = 8;
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
@@ -507,50 +546,10 @@ public class Receiver extends Thread {
 						// gestione messaggi di unlock
 						cycle++;
 						
-						// se il messaggio è in coda da più di due cicli di unlock chiedo la ritrasmissione totale
-						if (queue.size() != 0) {
-							if (cycle >= queue.get(0).cycle + 8) {
-								
-								// ci sono due possibilità: 1) ho ricevuto i messaggi di ok ma ho perso un ack 2) non ho tutti i messaggi di ok
-								// nel caso 1) mi basta richiedere l'invio di un ack
-								// nel caso 2) devo reinviare tutto
-								
-								// significa che ho perso un ack, quindi mi basta inviare un messaggio di send specificando il retransmit
-								if (isFullyOk()) {
-									// chiedo ritrasmissione solo ai server mancanti
-									manageRetransmissions();
-									busy = true;
-									
-									System.out.println("E' stata richiesta la ritrasmissione di un messaggio di ack");
-								}
-								else {
-									// devo ritrasmettere tutto
-									Message request = new Message(queue.get(0));
-									request.isAck = false;
-									
-									sendMulticast(request, false);
-									//manageRetransmissionsOk();
-									busy = false;
-									
-									System.out.println("E' stata richiesta la ritrasmissione di un messaggio di ok");
-								}
-								
-								// aggiorno il cycle del primo elemento in coda
-								queue.get(0).cycle = cycle;
-							}
-						}
+						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
+						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
-				
-				// gestione dell'invio degli ack
-				/*if (isFullyOk() && !busy && valid()) {
-					// invio il mio ack
-					Message request = new Message(queue.get(0));
-					request.type = "send";
-					
-					sendMulticast(request, true);
-					busy = true;
-				}*/
 				
 				ackForwarding();
 				
@@ -584,8 +583,6 @@ public class Receiver extends Thread {
 						bw.flush();
 						bw.close();
 					}
-					
-					busy = false;
 				}
 				
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
