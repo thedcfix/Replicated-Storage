@@ -73,7 +73,7 @@ public class CrazyClient {
 			client.write(id, val);
 			System.out.println("Scritto il valore " + val + " associato all'id " + id);
 			
-			Thread.sleep(13000);
+			Thread.sleep(5000);
 		}
 		
 		client.disconnect();

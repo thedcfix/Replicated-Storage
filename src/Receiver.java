@@ -333,6 +333,50 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	private int count(Message msg) {
+		
+		int counter = 0;
+		
+		for (Message m : receivedMessages) {
+			if (m.equalsLite(msg)){
+				counter++;
+			}
+		}
+		
+		return counter;
+	}
+	
+	private Message find(Message msg) {
+		for (Message m : queue) {
+			if (m.equalsLite(msg)) {
+				return m;
+			}
+		}
+		
+		// non succede mai
+		return null;
+	}
+	
+	private void ackForwarding() throws IOException, InterruptedException {
+		
+		int number;
+		
+		for (int i=0; i< receivedMessages.size(); i++) {
+			number = count(receivedMessages.get(i));
+			
+			if (number == servers.size()) {
+				// richiedo gli ack
+				Message request = new Message(find(receivedMessages.get(i)));
+				request.type = "send";
+				
+				sendMulticast(request, true);
+				
+				//aggiorno il contatore per evitare di mandare lo stesso messaggio troppe volte
+				i += servers.size();
+			}
+		}
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
@@ -494,14 +538,16 @@ public class Receiver extends Thread {
 				}
 				
 				// gestione dell'invio degli ack
-				if (isFullyOk() && !busy && valid()) {
+				/*if (isFullyOk() && !busy && valid()) {
 					// invio il mio ack
 					Message request = new Message(queue.get(0));
 					request.type = "send";
 					
 					sendMulticast(request, true);
 					busy = true;
-				}
+				}*/
+				
+				ackForwarding();
 				
 				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
 				clean(executionList);
