@@ -539,8 +539,8 @@ public class Receiver extends Thread {
 				
 				if (queue.size() != 0) {
 					printQueue();
-					//printList();
-					//printOk();
+					printList();
+					printOk();
 				}
 			}
 			catch (Exception e) {
