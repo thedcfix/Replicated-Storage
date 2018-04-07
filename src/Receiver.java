@@ -495,7 +495,7 @@ public class Receiver extends Thread {
 							System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);
 						}
 					}
-					else if(mess.type.equals("send")) {
+					else if(mess.type.equals("send") && mess.source.equals(mess.ackSource)) {
 						// invio in multicast il mio ack
 						
 						mess.type = "ack";
@@ -509,7 +509,7 @@ public class Receiver extends Thread {
 						
 						// se il messaggio è in coda da più di due cicli di unlock chiedo la ritrasmissione totale
 						if (queue.size() != 0) {
-							if (cycle >= queue.get(0).cycle + 2) {
+							if (cycle >= queue.get(0).cycle + 8) {
 								
 								// ci sono due possibilità: 1) ho ricevuto i messaggi di ok ma ho perso un ack 2) non ho tutti i messaggi di ok
 								// nel caso 1) mi basta richiedere l'invio di un ack
@@ -588,7 +588,7 @@ public class Receiver extends Thread {
 					busy = false;
 				}
 				
-				if (queue.size() != 0) {
+				if (queue.size() != 0 && !mess.type.equals("unlock")) {
 					printQueue();
 					printList();
 					printOk();
