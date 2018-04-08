@@ -422,9 +422,35 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	public boolean checkExistance(Message msg, List<Message> executionList) {
+		
+		boolean present = false;
+		
+		// cerco in coda
+		for (Message m : queue) {
+			if(m.equalsPrevious(msg)) {
+				present = true;
+				break;
+			}
+		}
+		
+		// cerco nella lista degli eseguiti
+		if (!present) {
+			for (Message m : executionList) {
+				if(m.equalsPrevious(msg)) {
+					present = true;
+					break;
+				}
+			}
+		}
+		
+		return present;
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
+		boolean first = true;
 		long cycle = 0;
 		int cyclesToRetransmit = 8;
 		
@@ -454,6 +480,17 @@ public class Receiver extends Thread {
 							mess.cycle = cycle;
 							queue.add(mess);
 							
+							// gestisco l'ordinamento in ricezione da parte deglia trli server
+							if (!first) {
+								mess.hasPrevious = true;
+							}
+							else {
+								mess.hasPrevious = false;
+							}
+							
+							// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
+							mess.executable = true;
+							
 							// ordino la coda
 							Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 							Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
@@ -466,15 +503,28 @@ public class Receiver extends Thread {
 							if(!isAlreadyPresent(mess)) {
 								// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
 								mess.cycle = cycle;
+								
+								if (mess.hasPrevious) {
+									if(checkExistance(mess, executionList)) {
+										// esiste un messaggio precedente quindi posso marcare questo come eseguibile
+										mess.executable = true;
+									}
+									else {
+										// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
+										mess.executable = false;
+									}
+								}
+								
+								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
+								if (mess.equalsPrevious(queue.get(0))) {
+									queue.get(0).executable = true;
+								}
+								
 								queue.add(mess);
 								
 								// ordino la coda
 								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
-								
-								// ordino la lista
-								Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(receivedMessages, (m1, m2) -> m1.clock - m2.clock);
 								
 								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
 							}
@@ -571,7 +621,7 @@ public class Receiver extends Thread {
 				
 				// controllo se c'è da eseguire qualcosa
 				if (isFullyAcknowledged()) {
-					while (isFullyAcknowledged()) {
+					while (isFullyAcknowledged() && queue.get(0).executable) {
 						Message inExecution = queue.get(0);
 						executionList.add(inExecution);clockList.add(inExecution.clock);
 						

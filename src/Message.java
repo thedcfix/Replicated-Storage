@@ -15,6 +15,8 @@ public class Message implements Serializable{
 	public boolean isRetransmit;
 	public long cycle;
 	public boolean requestedAck;
+	public boolean hasPrevious;
+	public boolean executable;
 	
 	public Message(String type) {
 		this.type = type;
@@ -45,6 +47,8 @@ public class Message implements Serializable{
 		this.isRetransmit = m.isRetransmit;
 		this.cycle = m.cycle;
 		this.requestedAck = m.requestedAck;
+		this.hasPrevious = m.hasPrevious;
+		this.executable = m.executable;
 	}
 	
 	public boolean equals(Message m) {
@@ -74,6 +78,16 @@ public class Message implements Serializable{
 		
 		if (this.clock == m.clock && this.source.equals(m.source) && 
 				this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	// serve per controllare se esiste un messaggio precedente a quello fornito come parametro
+	public boolean equalsPrevious(Message m) {
+		if (this.clock == (m.clock - 1) && this.source.equals(m.source)) {
 			return true;
 		}
 		else {
