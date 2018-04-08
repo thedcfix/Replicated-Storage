@@ -299,30 +299,50 @@ public class Receiver extends Thread {
 		return false;
 	}
 	
-	private void clean(List<Message> executionList) {
-		
+	private void cleanQueue(List<Message> executionList) {
 		try {
-			for (Message m : executionList) {
-				if (queue.size() != 0) {
-					for (Message msg : queue) {
-						if (m.equalsLite(msg)) {
-							queue.remove(msg);
+			
+			if (queue.size() != 0) {
+				for (Message m1 : queue) {
+					for (Message m2 : executionList) {
+						if (m1.equalsLite(m2)) {
+							queue.remove(m1);
 						}
 					}
 				}
-				
-				if (ackList.size() != 0) {
-					for (Message ack : ackList) {
-						if (m.equalsLite(ack)) {
-							ackList.remove(ack);
+			}
+		}
+		catch (Exception e) {
+			;
+		}
+	}
+	
+	private void cleanAck(List<Message> executionList) {
+		try {
+			
+			if (ackList.size() != 0) {
+				for (Message m1 : ackList) {
+					for (Message m2 : executionList) {
+						if (m1.equalsLite(m2)) {
+							ackList.remove(m1);
 						}
 					}
 				}
-				
-				if (receivedMessages.size() != 0) {
-					for (Message ok : receivedMessages) {
-						if (m.equalsLite(ok)) {
-							receivedMessages.remove(ok);
+			}
+		}
+		catch (Exception e) {
+			;
+		}
+	}
+	
+	private void cleanOk(List<Message> executionList) {
+		try {
+			
+			if (receivedMessages.size() != 0) {
+				for (Message m1 : receivedMessages) {
+					for (Message m2 : executionList) {
+						if (m1.equalsLite(m2)) {
+							receivedMessages.remove(m1);
 						}
 					}
 				}
@@ -621,15 +641,20 @@ public class Receiver extends Thread {
 						cycle++;
 						
 						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
-						clean(executionList);
+						cleanQueue(executionList);
+						cleanAck(executionList);
+						cleanOk(executionList);
 						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
 				
-				ackForwarding();
-				
 				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
-				clean(executionList);
+				cleanQueue(executionList);
+				cleanAck(executionList);
+				cleanOk(executionList);
+				
+				// genero richieste ack
+				ackForwarding();
 				
 				// stampo informazioni
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
@@ -677,15 +702,6 @@ public class Receiver extends Thread {
 					
 					String listString = clockList.stream().map(Object::toString).collect(Collectors.joining(", "));
 					System.out.println(listString);
-					
-					if (queue.size() == 0 && (receivedMessages.size() != 0 || executionList.size() != 0)) {
-						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-						System.out.println("C'E' UN PROBLEMA DA QUALCHE PARTE. LA CODA E' VUOTA MA STANNO ARRIVANDO MESSAGGI");
-						printQueue();
-						printList();
-						printOk();
-						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-					}
 				}
 			}
 			catch (Exception e) {
