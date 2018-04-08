@@ -413,10 +413,11 @@ public class Receiver extends Thread {
 			Message okMsg = receivedMessages.get(i);
 			number = count(okMsg);
 			
-			if (number == servers.size()) {
-				
-				// invio le richieste di ack una sola volta. Segno se un messaggio ha già richiesto un ack
+			if (number == servers.size()) {				
+				// invio le richieste di ack una sola volta
 				if (!okMsg.requestedAck) {
+					okMsg.requestedAck = true;
+					
 					Message request = new Message(okMsg);
 					
 					request.type = "send";
@@ -427,16 +428,9 @@ public class Receiver extends Thread {
 					
 					sendMulticast(request, false);
 				}
-				
-				// segno i messaggi di ok come eseguibili
-				for ( ; i < (i + number); i++) {
-					okMsg.executable = true;
-					okMsg.requestedAck = true;
-				}
 			}
-			else {
-				i += number;
-			}
+			
+			i += number;
 		}
 	}
 	
