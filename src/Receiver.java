@@ -516,8 +516,10 @@ public class Receiver extends Thread {
 								}
 								
 								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-								if (mess.equalsPrevious(queue.get(0))) {
-									queue.get(0).executable = true;
+								if (queue.size() != 0) {
+									if (mess.equalsPrevious(queue.get(0))) {
+										queue.get(0).executable = true;
+									}
 								}
 								
 								queue.add(mess);
