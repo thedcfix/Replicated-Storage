@@ -353,6 +353,19 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	private void printExecuted(List<Message> list) {
+		int i = 1;
+		
+		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		
+		for (Message m : list) {
+			System.out.print(i + " ");
+			m.print();
+		}
+		
+		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+	}
+	
 	private int count(Message msg) {
 		
 		int counter = 0;
@@ -702,6 +715,8 @@ public class Receiver extends Thread {
 					
 					String listString = clockList.stream().map(Object::toString).collect(Collectors.joining(", "));
 					System.out.println(listString);
+					
+					printExecuted(executionList);
 				}
 			}
 			catch (Exception e) {
