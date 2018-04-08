@@ -97,6 +97,6 @@ public class Message implements Serializable{
 	
 	public void print() {
 		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Clock: " + clock + ". Ack source: "  + 
-				ackSource + ". Is ack: " + isAck );
+				ackSource + ". Is ack: " + isAck + ". Is retransmission: " + isRetransmit + ". Is executable: " + executable);
 	}
 }

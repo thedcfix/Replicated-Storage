@@ -356,14 +356,15 @@ public class Receiver extends Thread {
 	private void printExecuted(List<Message> list) {
 		int i = 1;
 		
-		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 		
 		for (Message m : list) {
 			System.out.print(i + " ");
 			m.print();
+			i++;
 		}
 		
-		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 	}
 	
 	private int count(Message msg) {
