@@ -547,6 +547,7 @@ public class Receiver extends Thread {
 						cycle++;
 						
 						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
+						clean(executionList);
 						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
