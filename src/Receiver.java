@@ -395,6 +395,19 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	private boolean alreadyExecuted(Message msg, List<Message> list) {
+		for (Message m : list) {
+			if (m.equalsLite(msg)) {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+		
+		return false;
+	}
+	
 	private void handleRetransmissions(long cycle, int max) throws IOException, InterruptedException {
 		if(queue.size() != 0) {
 			for (Message m : queue) {
@@ -516,11 +529,14 @@ public class Receiver extends Thread {
 								}
 								
 								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-								if (mess.equalsPrevious(queue.get(0))) {
-									queue.get(0).executable = true;
+								if (queue.size() != 0) {
+									if (mess.equalsPrevious(queue.get(0))) {
+										queue.get(0).executable = true;
+									}
 								}
 								
-								queue.add(mess);
+								if (!alreadyExecuted(mess, executionList))
+									queue.add(mess);
 								
 								// ordino la coda
 								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
@@ -535,7 +551,8 @@ public class Receiver extends Thread {
 							okMsg.ackSource = IP;
 							
 							// invio il mio messaggio di ok
-							sendMulticast(okMsg, false);
+							if (!alreadyExecuted(mess, executionList))
+								sendMulticast(okMsg, false);
 							
 							if(!mess.source.equals(IP)) {
 								System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
@@ -579,7 +596,8 @@ public class Receiver extends Thread {
 					if (mess.type.equals("ok")) {
 						if(!isAlreadyPresent(mess, "ok")){
 							// gestisco il fatto che gli altri server abbiano ricevuto il mio messaggio e lo abbiano aggiunto in coda
-							receivedMessages.add(mess);
+							if (!alreadyExecuted(mess, executionList))
+								receivedMessages.add(mess);
 							
 							// ordino la lista
 							Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
