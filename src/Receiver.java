@@ -409,6 +409,7 @@ public class Receiver extends Thread {
 						Message request = new Message(m);
 						request.isAck = false;
 						request.requestedAck = false;
+						request.isRetransmit = true;
 						
 						sendMulticast(request, false);
 						
@@ -500,47 +501,64 @@ public class Receiver extends Thread {
 							System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");
 						}
 						else {
-							if(!isAlreadyPresent(mess)) {
-								// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
-								mess.cycle = cycle;
+							
+							if (mess.isRetransmit) {
+								// ho ricevuto un richiesta di ritrasmissione di un messaggio di ok
+								Message okMsg = new Message(mess);
 								
-								if (mess.hasPrevious) {
-									if(checkExistance(mess, executionList)) {
-										// esiste un messaggio precedente quindi posso marcare questo come eseguibile
-										mess.executable = true;
-									}
-									else {
-										// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
-										mess.executable = false;
-									}
+								okMsg.type = "ok";
+								okMsg.ackSource = IP;
+								
+								// invio il mio messaggio di ok
+								sendMulticast(okMsg, false);
+								
+								if(!mess.source.equals(IP)) {
+									System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
 								}
-								
-								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-								if (queue.size() != 0) {
-									if (mess.equalsPrevious(queue.get(0))) {
-										queue.get(0).executable = true;
-									}
-								}
-								
-								queue.add(mess);
-								
-								// ordino la coda
-								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
-								
-								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
 							}
-							
-							Message okMsg = new Message(mess);
+							else {
+								if(!isAlreadyPresent(mess)) {
+									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
+									mess.cycle = cycle;
+									
+									if (mess.hasPrevious) {
+										if(checkExistance(mess, executionList)) {
+											// esiste un messaggio precedente quindi posso marcare questo come eseguibile
+											mess.executable = true;
+										}
+										else {
+											// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
+											mess.executable = false;
+										}
+									}
+									
+									// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
+									if (queue.size() != 0) {
+										if (mess.equalsPrevious(queue.get(0))) {
+											queue.get(0).executable = true;
+										}
+									}
+									
+									queue.add(mess);
+									
+									// ordino la coda
+									Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
+									Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
+									
+									System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
+								}
 								
-							okMsg.type = "ok";
-							okMsg.ackSource = IP;
-							
-							// invio il mio messaggio di ok
-							sendMulticast(okMsg, false);
-							
-							if(!mess.source.equals(IP)) {
-								System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+								Message okMsg = new Message(mess);
+									
+								okMsg.type = "ok";
+								okMsg.ackSource = IP;
+								
+								// invio il mio messaggio di ok
+								sendMulticast(okMsg, false);
+								
+								if(!mess.source.equals(IP)) {
+									System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+								}
 							}
 						}
 					}
@@ -663,6 +681,7 @@ public class Receiver extends Thread {
 					if (queue.size() == 0 && (receivedMessages.size() != 0 || executionList.size() != 0)) {
 						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 						System.out.println("C'E' UN PROBLEMA DA QUALCHE PARTE. LA CODA E' VUOTA MA STANNO ARRIVANDO MESSAGGI");
+						printQueue();
 						printList();
 						printOk();
 						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
