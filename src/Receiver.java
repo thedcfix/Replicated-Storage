@@ -592,6 +592,13 @@ public class Receiver extends Thread {
 						bw.flush();
 						bw.close();
 					}
+					
+					if (queue.size() != 0) {
+						printQueue();
+						printList();
+						printOk();
+						System.out.println("--------------------------------------------------------------------------------------------------");
+					}
 				}
 			}
 			catch (Exception e) {
