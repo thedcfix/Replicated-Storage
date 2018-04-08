@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class Receiver extends Thread {
+public class Receiver_old extends Thread {
 	
 	private InetAddress group;
 	private int SERVERS_PORT;
@@ -33,7 +33,7 @@ public class Receiver extends Thread {
 	
 	public int DELIVERY_PORT = 8503;
 
-	public Receiver(int port) throws IOException {
+	public Receiver_old(int port) throws IOException {
 		
 		SERVERS_PORT = port;
 		
@@ -504,19 +504,16 @@ public class Receiver extends Thread {
 				//mess.print();
 				
 				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send")) {
-					
-					//mess.print();
-					
-					// gestione messaggi di azione e ack
-					if (!mess.isAck) {
+					// gestione messaggi normali
+					if(!mess.isAck) {
 						// il messaggio non è un ack
 						
+						// il messaggio proviene dal client, che lo ha sottomesso al server
 						if (!isAlreadyPresent(mess) && mess.source.equals(IP)) {
-							// il messaggio proviene dal client, che lo ha sottomesso al server
-							
 							// invio conferma ricezione da parte del server all'handler
 							sendUDP(mess, DELIVERY_PORT);
 							mess.cycle = cycle;
+							queue.add(mess);
 							
 							// gestisco l'ordinamento in ricezione da parte deglia trli server
 							if (!first) {
@@ -524,103 +521,101 @@ public class Receiver extends Thread {
 							}
 							else {
 								mess.hasPrevious = false;
-								first = false;
 							}
 							
 							// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
 							mess.executable = true;
-							
-							queue.add(mess);
 							
 							// ordino la coda
 							Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 							Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
 							
 							// invio il mio messaggio agli altri server
-							Message msg = new Message(mess);
-
-							msg.isRetransmit = false;
-							msg.executable = false;
-							
-							sendMulticast(msg, false);
+							sendMulticast(mess, false);
 							System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");
 						}
 						else {
-							// il messaggio proviene da un altro server
 							
-							if(!isAlreadyPresent(mess)) {
-								// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
-								mess.cycle = cycle;
+							if (mess.isRetransmit) {
+								// ho ricevuto un richiesta di ritrasmissione di un messaggio di ok
+								Message okMsg = new Message(mess);
 								
-								if (mess.hasPrevious) {
-									if(checkExistance(mess, executionList)) {
-										// esiste un messaggio precedente quindi posso marcare questo come eseguibile
-										mess.executable = true;
-									}
-									else {
-										// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
-										mess.executable = false;
-									}
+								okMsg.type = "ok";
+								okMsg.ackSource = IP;
+								
+								// invio il mio messaggio di ok
+								sendMulticast(okMsg, false);
+								
+								if(!mess.source.equals(IP)) {
+									System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
 								}
-								
-								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-								if (queue.size() != 0) {
-									if (mess.equalsPrevious(queue.get(0))) {
-										queue.get(0).executable = true;
-									}
-								}
-								
-								queue.add(mess);
-								
-								// ordino la coda
-								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
-								
-								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
 							}
-						}
-						
-						// in entrambi i casi rispondo emettendo il mio messaggio di ok
-						Message okMsg = new Message(mess);
-						
-						okMsg.type = "ok";
-						okMsg.ackSource = IP;
-						okMsg.isRetransmit = false;
-						okMsg.executable = false;
-						
-						// invio il mio messaggio di ok
-						sendMulticast(okMsg, false);
-						
-						if(!mess.source.equals(IP)) {
-							System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+							else {
+								if(!isAlreadyPresent(mess)) {
+									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
+									mess.cycle = cycle;
+									
+									if (mess.hasPrevious) {
+										if(checkExistance(mess, executionList)) {
+											// esiste un messaggio precedente quindi posso marcare questo come eseguibile
+											mess.executable = true;
+										}
+										else {
+											// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
+											mess.executable = false;
+										}
+									}
+									
+									// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
+									if (queue.size() != 0) {
+										if (mess.equalsPrevious(queue.get(0))) {
+											queue.get(0).executable = true;
+										}
+									}
+									
+									queue.add(mess);
+									
+									// ordino la coda
+									Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
+									Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
+									
+									System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
+								}
+								
+								Message okMsg = new Message(mess);
+									
+								okMsg.type = "ok";
+								okMsg.ackSource = IP;
+								
+								// invio il mio messaggio di ok
+								sendMulticast(okMsg, false);
+								
+								if(!mess.source.equals(IP)) {
+									System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+								}
+							}
 						}
 					}
 					else {
 						// il messaggio è un ack
 						
+						// eseguo la ritrasmissione del mio ack per il messaggio inviatomi
 						if (mess.isRetransmit) {
-							// eseguo la ritrasmissione del mio ack per il messaggio inviatomi
-							
 							// invio in multicast il mio ack
 							String destination = mess.ackSource;
 							
 							mess.type = "ack";
-							mess.isAck = true;
 							mess.isRetransmit = false;
-							mess.executable = false;
 							mess.ackSource = IP;
 							
 							sendUDPtoServer(mess, SERVERS_PORT, destination);
 							System.out.println("Ack ritrasmesso a " + destination);
 						}
 						else {
+							// controllo duplicati
 							if (!isAlreadyPresent(mess, "list")) {
 								// aggiungo l'ack alla lista delgi ack ricevuti
 								Message m = new Message(mess);
-								
-								m.isAck = true;
-								m.isRetransmit = false;
-								m.executable = false;
 								
 								ackList.add(m);
 								
@@ -634,56 +629,95 @@ public class Receiver extends Thread {
 					}
 				}
 				else {
-					// gestione messaggi di ok, send e unlock
-					
-					if (mess.isRetransmit && mess.type.equals("ok")) {
-						// gestisco la ritrasmissione di un messaggio di ok
+					// gestione messaggi di unlock e di ok
+					if (mess.type.equals("ok")) {
+						if(!isAlreadyPresent(mess, "ok")){
+							// gestisco il fatto che gli altri server abbiano ricevuto il mio messaggio e lo abbiano aggiunto in coda
+							receivedMessages.add(mess);
+							
+							// ordino la lista
+							Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
+							Collections.sort(receivedMessages, (m1, m2) -> m1.clock - m2.clock);
+							
+							System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);
+						}
+					}
+					else if(mess.type.equals("send") && mess.source.equals(mess.ackSource)) {
+						// invio in multicast il mio ack
+						
+						mess.type = "ack";
+						
+						sendMulticast(mess, true);
+						System.out.println("Inviato ack in multicast da " + IP);
 					}
 					else {
-						if (mess.type.equals("ok")) {
-							if(!isAlreadyPresent(mess, "ok")){
-								// gestisco il fatto che gli altri server abbiano ricevuto il mio messaggio e lo abbiano aggiunto in coda
-								receivedMessages.add(mess);
-								
-								// ordino la lista
-								Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(receivedMessages, (m1, m2) -> m1.clock - m2.clock);
-								
-								System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);
-							}
-						}
-						else if(mess.type.equals("send") && mess.source.equals(mess.ackSource)) {
-							// gestione messaggi di send
-							
-							// invio in multicast il mio ack
-							mess.type = "ack";
-							
-							sendMulticast(mess, true);
-							System.out.println("Inviato ack in multicast da " + IP);
-						}
-						else {
-							// gestione messaggi di unlock
-							
-							cycle++;
-							
-							// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
-							cleanQueue(executionList);
-							cleanAck(executionList);
-							cleanOk(executionList);
-							handleRetransmissions(cycle, cyclesToRetransmit);
-						}
+						// gestione messaggi di unlock
+						cycle++;
+						
+						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
+						cleanQueue(executionList);
+						cleanAck(executionList);
+						cleanOk(executionList);
+						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
 				
+				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
+				cleanQueue(executionList);
+				cleanAck(executionList);
+				cleanOk(executionList);
+				
+				// genero richieste ack
+				ackForwarding();
+				
+				// stampo informazioni
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
-					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					printQueue();
-					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					printList();
-					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					printOk();
-					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
-					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+					System.out.println("--------------------------------------------------------------------------------------------------");
+				}
+				
+				// controllo se c'è da eseguire qualcosa
+				if (isFullyAcknowledged()) {
+					while (isFullyAcknowledged() && queue.get(0).executable) {
+						Message inExecution = queue.get(0);
+						executionList.add(inExecution);clockList.add(inExecution.clock);
+						
+						// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
+						receivedMessages.removeAll(extractOkSublist(inExecution));
+						
+						if (inExecution.type.equals("write")) {
+							storage.put(inExecution.id, inExecution.value);
+						}
+						
+						// rimuovo il messaggio eseguito dalla coda, cancello i suoi ack e lo aggiungo alla lista dei messaggi eseguiti
+						ackList.removeAll(extractAckSublist());
+						queue = queue.subList(1, queue.size());
+						
+						System.out.println("Messaggio eseguito");
+						System.out.println(storage.toString());
+						System.out.println("--------------------------------------------------------------------------------------------------");
+						
+						// log per confronto finale
+						BufferedWriter bw = new BufferedWriter(new FileWriter("controllo.txt", true));
+						bw.write(storage.toString());
+						bw.newLine();
+						bw.flush();
+						bw.close();
+					}
+					
+					if (queue.size() != 0) {
+						printQueue();
+						printList();
+						printOk();
+						System.out.println("--------------------------------------------------------------------------------------------------");
+					}
+					
+					String listString = clockList.stream().map(Object::toString).collect(Collectors.joining(", "));
+					System.out.println(listString);
+					
+					printExecuted(executionList);
 				}
 			}
 			catch (Exception e) {
