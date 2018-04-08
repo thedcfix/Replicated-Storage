@@ -413,19 +413,30 @@ public class Receiver extends Thread {
 			Message okMsg = receivedMessages.get(i);
 			number = count(okMsg);
 			
-			if (number == servers.size()) {				
-				// invio le richieste di ack una sola volta
+			if (number == servers.size()) {
+				
+				// invio le richieste di ack una sola volta. Segno se un messaggio ha già richiesto un ack
 				if (!okMsg.requestedAck) {
-					okMsg.requestedAck = true;
+					Message request = new Message(okMsg);
 					
-					Message request = new Message(find(okMsg));
 					request.type = "send";
+					request.ackSource = IP;
+					request.isAck = false;
+					request.isRetransmit = false;
+					request.executable = false;
 					
-					sendMulticast(request, true);
+					sendMulticast(request, false);
+				}
+				
+				// segno i messaggi di ok come eseguibili
+				for ( ; i < (i + number); i++) {
+					okMsg.executable = true;
+					okMsg.requestedAck = true;
 				}
 			}
-			
-			i += number;
+			else {
+				i += number;
+			}
 		}
 	}
 	
@@ -678,6 +689,14 @@ public class Receiver extends Thread {
 					}
 				}
 				
+				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
+				cleanQueue(executionList);
+				cleanAck(executionList);
+				cleanOk(executionList);
+				
+				// genero richieste ack
+				ackForwarding();
+				
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					printQueue();
@@ -687,6 +706,28 @@ public class Receiver extends Thread {
 					printOk();
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+				}
+				
+				if (isFullyAcknowledged()) {
+					while (isFullyAcknowledged() && queue.get(0).executable) {
+						Message inExecution = queue.get(0);
+						executionList.add(inExecution);clockList.add(inExecution.clock);
+						
+						// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
+						receivedMessages.removeAll(extractOkSublist(inExecution));
+						
+						if (inExecution.type.equals("write")) {
+							storage.put(inExecution.id, inExecution.value);
+						}
+						
+						// rimuovo il messaggio eseguito dalla coda, cancello i suoi ack e lo aggiungo alla lista dei messaggi eseguiti
+						ackList.removeAll(extractAckSublist());
+						queue = queue.subList(1, queue.size());
+						
+						System.out.println("Messaggio eseguito");
+						System.out.println(storage.toString());
+						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+					}
 				}
 			}
 			catch (Exception e) {
