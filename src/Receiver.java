@@ -659,6 +659,14 @@ public class Receiver extends Thread {
 					
 					String listString = clockList.stream().map(Object::toString).collect(Collectors.joining(", "));
 					System.out.println(listString);
+					
+					if (queue.size() == 0 && (receivedMessages.size() != 0 || executionList.size() != 0)) {
+						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+						System.out.println("C'E' UN PROBLEMA DA QUALCHE PARTE. LA CODA E' VUOTA MA STANNO ARRIVANDO MESSAGGI");
+						printList();
+						printOk();
+						System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					}
 				}
 			}
 			catch (Exception e) {
