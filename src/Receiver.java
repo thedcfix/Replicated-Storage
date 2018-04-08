@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Receiver extends Thread {
 	
@@ -430,6 +431,9 @@ public class Receiver extends Thread {
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
 		
+		// per debug
+		List<Integer> clockList = new ArrayList<>();
+		
 		while(true) {
 			
 			try {
@@ -569,7 +573,7 @@ public class Receiver extends Thread {
 				if (isFullyAcknowledged()) {
 					while (isFullyAcknowledged()) {
 						Message inExecution = queue.get(0);
-						executionList.add(inExecution);
+						executionList.add(inExecution);clockList.add(inExecution.clock);
 						
 						// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
 						receivedMessages.removeAll(extractOkSublist(inExecution));
@@ -600,6 +604,9 @@ public class Receiver extends Thread {
 						printOk();
 						System.out.println("--------------------------------------------------------------------------------------------------");
 					}
+					
+					String listString = clockList.stream().map(Object::toString).collect(Collectors.joining(", "));
+					System.out.println(listString);
 				}
 			}
 			catch (Exception e) {
