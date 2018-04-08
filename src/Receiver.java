@@ -254,7 +254,7 @@ public class Receiver extends Thread {
 	
 	private void printQueue() {
 		
-		System.out.println("Coda dei messaggi: \n");
+		System.out.println("\nCoda dei messaggi: \n");
 		
 		for (Message m : queue) {
 			m.print();
@@ -556,6 +556,14 @@ public class Receiver extends Thread {
 				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
 				clean(executionList);
 				
+				// stampo informazioni
+				if (queue.size() != 0 && !mess.type.equals("unlock")) {
+					printQueue();
+					printList();
+					printOk();
+					System.out.println("--------------------------------------------------------------------------------------------------");
+				}
+				
 				// controllo se c'è da eseguire qualcosa
 				if (isFullyAcknowledged()) {
 					while (isFullyAcknowledged()) {
@@ -575,6 +583,7 @@ public class Receiver extends Thread {
 						
 						System.out.println("Messaggio eseguito");
 						System.out.println(storage.toString());
+						System.out.println("--------------------------------------------------------------------------------------------------");
 						
 						// log per confronto finale
 						BufferedWriter bw = new BufferedWriter(new FileWriter("controllo.txt", true));
@@ -583,12 +592,6 @@ public class Receiver extends Thread {
 						bw.flush();
 						bw.close();
 					}
-				}
-				
-				if (queue.size() != 0 && !mess.type.equals("unlock")) {
-					printQueue();
-					printList();
-					printOk();
 				}
 			}
 			catch (Exception e) {
