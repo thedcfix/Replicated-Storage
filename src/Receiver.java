@@ -596,7 +596,7 @@ public class Receiver extends Thread {
 							msg.executable = false;
 							
 							sendMulticast(msg, false);
-							System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");
+							System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");mess.print();
 						}
 						else {
 							// il messaggio proviene da un altro server
@@ -632,7 +632,7 @@ public class Receiver extends Thread {
 								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
 								
-								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");
+								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");mess.print();
 							}
 						}
 						
@@ -684,7 +684,7 @@ public class Receiver extends Thread {
 								Collections.sort(ackList, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 								Collections.sort(ackList, (m1, m2) -> m1.clock - m2.clock);
 								
-								System.out.println("Ack da " + mess.ackSource + " ricevuto e inserito in lista");
+								System.out.println("Ack da " + mess.ackSource + " ricevuto e inserito in lista");mess.print();
 							}
 						}
 					}
@@ -713,7 +713,7 @@ public class Receiver extends Thread {
 								Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 								Collections.sort(receivedMessages, (m1, m2) -> m1.clock - m2.clock);
 								
-								System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);
+								System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);mess.print();
 							}
 						}
 						else if(mess.type.equals("send") && mess.source.equals(mess.ackSource)) {
