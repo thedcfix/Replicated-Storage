@@ -791,6 +791,8 @@ public class Receiver extends Thread {
 						System.out.println(storage.toString());
 						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 					}
+					
+					printExecuted(executionList);
 				}
 			}
 			catch (Exception e) {
