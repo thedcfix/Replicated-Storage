@@ -496,7 +496,7 @@ public class Receiver extends Thread {
 		
 		// cerco in coda
 		for (Message m : queue) {
-			if(m.equalsLite(msg)) {
+			if(m.equalsPrevious(msg)) {
 				present = true;
 				break;
 			}
@@ -505,7 +505,7 @@ public class Receiver extends Thread {
 		// cerco nella lista degli eseguiti
 		if (!present) {
 			for (Message m : executionList) {
-				if(m.equalsLite(msg)) {
+				if(m.equalsPrevious(msg)) {
 					present = true;
 					break;
 				}
