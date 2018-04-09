@@ -207,10 +207,13 @@ public class Receiver extends Thread {
 		}
 		
 		//agli IP rimanenti invio la richiesta di ritrasmissione
-		Message msg = queue.get(0);
+		Message msg = new Message(queue.get(0));
+		
+		msg.type = "ack";
 		msg.isAck = true;
-		msg.ackSource = this.IP;
 		msg.isRetransmit = true;
+		msg.executable = false;
+		msg.ackSource = this.IP;
 		
 		for (String IP : IPs) {
 			sendUDPtoServer(msg, SERVERS_PORT, IP);
@@ -436,6 +439,8 @@ public class Receiver extends Thread {
 	
 	private void handleRetransmissions(long cycle, int max) throws IOException, InterruptedException {
 		if(queue.size() != 0) {
+			// ho un elemento in coda ma mancano ack o mesaggi di ok
+			
 			for (Message m : queue) {
 				if(cycle >= m.cycle + max) {
 					if (count(m) == servers.size()) {
@@ -446,9 +451,13 @@ public class Receiver extends Thread {
 					else {
 						// mancano dei messaggi di ok quindi ritrasmetto tutto
 						Message request = new Message(m);
+						
+						request.type = "ok";
 						request.isAck = false;
 						request.requestedAck = false;
 						request.isRetransmit = true;
+						request.executable = false;
+						request.ackSource = IP;
 						
 						sendMulticast(request, false);
 						
@@ -459,6 +468,10 @@ public class Receiver extends Thread {
 					m.cycle = cycle;
 				}
 			}
+		}
+		else {
+			// manca il messaggio;
+			;
 		}
 	}
 	
@@ -646,6 +659,14 @@ public class Receiver extends Thread {
 					
 					if (mess.isRetransmit && mess.type.equals("ok")) {
 						// gestisco la ritrasmissione di un messaggio di ok
+						
+						String destination = mess.ackSource;
+						
+						mess.isRetransmit = false;
+						mess.ackSource = IP;
+						
+						sendUDPtoServer(mess, SERVERS_PORT, destination);
+						System.out.println("Messaggio di ok ritrasmesso a " + destination);
 					}
 					else {
 						if (mess.type.equals("ok")) {
