@@ -396,15 +396,14 @@ public class Receiver extends Thread {
 		return list;
 	}
 	
-	private Message find(Message msg) {
+	private boolean find(Message msg) {
 		for (Message m : queue) {
 			if (m.equalsLite(msg)) {
-				return m;
+				return true;
 			}
 		}
 		
-		// non succede mai
-		return null;
+		return false;
 	}
 	
 	private void ackForwarding() throws IOException, InterruptedException {
@@ -469,9 +468,25 @@ public class Receiver extends Thread {
 				}
 			}
 		}
-		else {
-			// manca il messaggio;
-			;
+		
+		// potrebbe invece mancare proprio il messaggio (quello di ok ce l'ho per forza perchè altrimenti gli altri server non possono andare avanti)
+		// come minimo mi arriverebbe una ritrasmissione dei loro ok
+		for (Message ok : receivedMessages) {
+			if(!find(ok)) {
+				// significa che il messaggio esiste ma io non lo ho, ne chiedo ritrasmissione segnandolo come missing
+				Message request = new Message(ok);
+				
+				request.type = "missing";
+				request.isAck = false;
+				request.requestedAck = false;
+				request.isRetransmit = true;
+				request.executable = false;
+				request.ackSource = IP;
+				
+				sendUDPtoServer(request, SERVERS_PORT, ok.ackSource);
+				
+				System.out.println("E' stata richiesta la ritrasmissione di un messaggio mancante a cui corrisponde il messaggio di ok:");ok.print();
+			}
 		}
 	}
 	
@@ -500,6 +515,26 @@ public class Receiver extends Thread {
 		return present;
 	}
 	
+	public Message retrieveMissing(Message msg, List<Message> executionList) {
+		
+		// cerco in coda
+		for (Message m : queue) {
+			if(m.equalsPrevious(msg)) {
+				return m;
+			}
+		}
+		
+		// cerco nella lista degli eseguiti
+		for (Message m : executionList) {
+			if(m.equalsPrevious(msg)) {
+				return m;
+			}
+		}
+		
+		// non succede mai
+		return null;
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
@@ -521,7 +556,7 @@ public class Receiver extends Thread {
 				
 				//mess.print();
 				
-				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send")) {
+				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send") && !mess.type.equals("missing")) {
 					
 					//mess.print();
 					
@@ -655,7 +690,7 @@ public class Receiver extends Thread {
 					}
 				}
 				else {
-					// gestione messaggi di ok, send e unlock
+					// gestione messaggi di ok, send, missing e unlock
 					
 					if (mess.isRetransmit && mess.type.equals("ok")) {
 						// gestisco la ritrasmissione di un messaggio di ok
@@ -689,6 +724,19 @@ public class Receiver extends Thread {
 							
 							sendMulticast(mess, true);
 							System.out.println("Inviato ack in multicast da " + IP);
+						}
+						else if(mess.type.equals("missing")) {
+							
+							String destination = mess.ackSource;
+							
+							Message missing = new Message(retrieveMissing(mess, executionList));
+							
+							missing.isAck = false;
+							missing.isRetransmit = false;
+							missing.executable = false;
+							
+							sendUDPtoServer(missing, SERVERS_PORT, destination);
+							System.out.println("Inviato messaggio mancante a " + destination);
 						}
 						else {
 							// gestione messaggi di unlock
