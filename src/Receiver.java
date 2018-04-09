@@ -496,7 +496,7 @@ public class Receiver extends Thread {
 		
 		// cerco in coda
 		for (Message m : queue) {
-			if(m.equalsPrevious(msg)) {
+			if(m.equalsLite(msg)) {
 				present = true;
 				break;
 			}
@@ -505,7 +505,7 @@ public class Receiver extends Thread {
 		// cerco nella lista degli eseguiti
 		if (!present) {
 			for (Message m : executionList) {
-				if(m.equalsPrevious(msg)) {
+				if(m.equalsLite(msg)) {
 					present = true;
 					break;
 				}
@@ -519,14 +519,14 @@ public class Receiver extends Thread {
 		
 		// cerco in coda
 		for (Message m : queue) {
-			if(m.equalsPrevious(msg)) {
+			if(m.equalsLite(msg)) {
 				return m;
 			}
 		}
 		
 		// cerco nella lista degli eseguiti
 		for (Message m : executionList) {
-			if(m.equalsPrevious(msg)) {
+			if(m.equalsLite(msg)) {
 				return m;
 			}
 		}
@@ -736,7 +736,7 @@ public class Receiver extends Thread {
 							missing.executable = false;
 							
 							sendUDPtoServer(missing, SERVERS_PORT, destination);
-							System.out.println("Inviato messaggio mancante a " + destination);
+							System.out.println("Inviato messaggio mancante a " + destination);missing.print();
 						}
 						else {
 							// gestione messaggi di unlock
