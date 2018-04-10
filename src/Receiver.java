@@ -535,12 +535,12 @@ public class Receiver extends Thread {
 		return null;
 	}
 	
-	private void manageLock() {
+	private void manageLock(List<Message> executionList) {
 		if(queue.size() != 0) {
 			
 			Message first = queue.get(0);
 			
-			if (!first.executable) {
+			if (!first.executable && checkExistance(first, executionList)) {
 				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
 					first.executable = true;
 				}
@@ -772,7 +772,7 @@ public class Receiver extends Thread {
 				
 				// se vengono persi più messaggi in sequenza ci si ritrovacon il primo messaggio in coda non eseguibile
 				// in tal caso sblocco la situazione
-				manageLock();
+				manageLock(executionList);
 				
 				// genero richieste ack
 				ackForwarding();

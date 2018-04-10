@@ -65,7 +65,7 @@ public class CrazyClient {
 		int id;
 		int val;
 		
-		for (int i=0; i<10; i++) {
+		for (int i=0; i<50; i++) {
 			
 			id = (int) (Math.random() * 100 % 30);
 			val = (int) (Math.random() * 100 % 30);
