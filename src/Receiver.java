@@ -370,11 +370,11 @@ public class Receiver extends Thread {
 		System.out.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 	}
 	
-	private int count(Message msg) {
+	private int count(Message msg, List<Message> list) {
 		
 		int counter = 0;
 		
-		for (Message m : receivedMessages) {
+		for (Message m : list) {
 			if (m.equalsLite(msg)){
 				counter++;
 			}
@@ -413,7 +413,7 @@ public class Receiver extends Thread {
 		for (int i=0; i< receivedMessages.size(); ) {
 			
 			Message okMsg = receivedMessages.get(i);
-			number = count(okMsg);
+			number = count(okMsg, receivedMessages);
 			
 			if (number == servers.size()) {				
 				// invio le richieste di ack una sola volta
@@ -442,7 +442,7 @@ public class Receiver extends Thread {
 			
 			for (Message m : queue) {
 				if(cycle >= m.cycle + max) {
-					if (count(m) == servers.size()) {
+					if (count(m, receivedMessages) == servers.size()) {
 						// il messaggio ha già tutti gli ok e quindi mancano degli ack
 						manageRetransmissions(extractAckList(m));
 						System.out.println("E' stata richiesta la ritrasmissione di un ack relativo a:");m.print();
@@ -533,6 +533,19 @@ public class Receiver extends Thread {
 		
 		// non succede mai
 		return null;
+	}
+	
+	private void manageLock() {
+		if(queue.size() != 0) {
+			
+			Message first = queue.get(0);
+			
+			if (!first.executable) {
+				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
+					first.executable = true;
+				}
+			}
+		}
 	}
 	
 	public void run() {
@@ -756,6 +769,10 @@ public class Receiver extends Thread {
 				cleanQueue(executionList);
 				cleanAck(executionList);
 				cleanOk(executionList);
+				
+				// se vengono persi più messaggi in sequenza ci si ritrovacon il primo messaggio in coda non eseguibile
+				// in tal caso sblocco la situazione
+				manageLock();
 				
 				// genero richieste ack
 				ackForwarding();
