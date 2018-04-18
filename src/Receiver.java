@@ -577,67 +577,32 @@ public class Receiver extends Thread {
 					if (!mess.isAck) {
 						// il messaggio non è un ack
 						
-						if (!isAlreadyPresent(mess) && mess.source.equals(IP)) {
-							// il messaggio proviene dal client, che lo ha sottomesso al server
+						if (checkExistance(mess, executionList)) {
+							// se il messaggio esiste già significa che è stata richiesta une ritrasmissione perchè l'handler non ha ricevuto l'ack di inserimento i coda
+							// quindi reinvio semplicemente quell'ack
 							
 							// invio conferma ricezione da parte del server all'handler
 							sendUDP(mess, DELIVERY_PORT);
-							mess.cycle = cycle;
-							
-							// gestisco l'ordinamento in ricezione da parte deglia trli server
-							if (!first) {
-								mess.hasPrevious = true;
-							}
-							else {
-								mess.hasPrevious = false;
-								first = false;
-							}
-							
-							// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
-							mess.executable = true;
-							
-							queue.add(mess);
-							
-							// ordino la coda
-							Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-							Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
-							
-							// invio il mio messaggio agli altri server
-							Message msg = new Message(mess);
-
-							msg.isRetransmit = false;
-							msg.executable = false;
-							
-							sendMulticast(msg, false);
-							System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");mess.print();
 						}
 						else {
-							// il messaggio proviene da un altro server
-							
-							if(!isAlreadyPresent(mess)) {
-								// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
+							if (!isAlreadyPresent(mess) && mess.source.equals(IP)) {
+								// il messaggio proviene dal client, che lo ha sottomesso al server
+								
+								// invio conferma ricezione da parte del server all'handler
+								sendUDP(mess, DELIVERY_PORT);
 								mess.cycle = cycle;
 								
-								if (mess.hasPrevious) {
-									if(checkExistance(mess, executionList)) {
-										// esiste un messaggio precedente quindi posso marcare questo come eseguibile
-										mess.executable = true;
-									}
-									else {
-										// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
-										mess.executable = false;
-									}
+								// gestisco l'ordinamento in ricezione da parte deglia trli server
+								if (!first) {
+									mess.hasPrevious = true;
 								}
 								else {
-									mess.executable = true;
+									mess.hasPrevious = false;
+									first = false;
 								}
 								
-								// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-								if (queue.size() != 0) {
-									if (mess.equalsPrevious(queue.get(0))) {
-										queue.get(0).executable = true;
-									}
-								}
+								// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
+								mess.executable = true;
 								
 								queue.add(mess);
 								
@@ -645,23 +610,67 @@ public class Receiver extends Thread {
 								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
 								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
 								
-								System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");mess.print();
+								// invio il mio messaggio agli altri server
+								Message msg = new Message(mess);
+	
+								msg.isRetransmit = false;
+								msg.executable = false;
+								
+								sendMulticast(msg, false);
+								System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");mess.print();
 							}
-						}
-						
-						// in entrambi i casi rispondo emettendo il mio messaggio di ok
-						Message okMsg = new Message(mess);
-						
-						okMsg.type = "ok";
-						okMsg.ackSource = IP;
-						okMsg.isRetransmit = false;
-						okMsg.executable = false;
-						
-						// invio il mio messaggio di ok
-						sendMulticast(okMsg, false);
-						
-						if(!mess.source.equals(IP)) {
-							System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+							else {
+								// il messaggio proviene da un altro server
+								
+								if(!isAlreadyPresent(mess)) {
+									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
+									mess.cycle = cycle;
+									
+									if (mess.hasPrevious) {
+										if(checkExistance(mess, executionList)) {
+											// esiste un messaggio precedente quindi posso marcare questo come eseguibile
+											mess.executable = true;
+										}
+										else {
+											// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
+											mess.executable = false;
+										}
+									}
+									else {
+										mess.executable = true;
+									}
+									
+									// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
+									if (queue.size() != 0) {
+										if (mess.equalsPrevious(queue.get(0))) {
+											queue.get(0).executable = true;
+										}
+									}
+									
+									queue.add(mess);
+									
+									// ordino la coda
+									Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
+									Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
+									
+									System.out.println("Ricevuto messaggio proveniente da " + mess.source + ". Inserimento in coda avvenuto.");mess.print();
+								}
+							}
+							
+							// in entrambi i casi rispondo emettendo il mio messaggio di ok
+							Message okMsg = new Message(mess);
+							
+							okMsg.type = "ok";
+							okMsg.ackSource = IP;
+							okMsg.isRetransmit = false;
+							okMsg.executable = false;
+							
+							// invio il mio messaggio di ok
+							sendMulticast(okMsg, false);
+							
+							if(!mess.source.equals(IP)) {
+								System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+							}
 						}
 					}
 					else {

@@ -10,7 +10,7 @@ public class Unchoker extends Thread {
 	
 	private SharedContent queue;
 	public int DELIVERY_PORT;
-	int chockingTime = 10;
+	int chockingTime = 5;
 	
 	public Unchoker(SharedContent queue, int port) {
 		this.queue = queue;
