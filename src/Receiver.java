@@ -515,6 +515,30 @@ public class Receiver extends Thread {
 		return present;
 	}
 	
+	public boolean checkAlreadyProcessed(Message msg, List<Message> executionList) {
+		boolean present = false;
+		
+		// cerco in coda
+		for (Message m : queue) {
+			if(m.equals(msg)) {
+				present = true;
+				break;
+			}
+		}
+		
+		// cerco nella lista degli eseguiti
+		if (!present) {
+			for (Message m : executionList) {
+				if(m.equals(msg)) {
+					present = true;
+					break;
+				}
+			}
+		}
+		
+		return present;
+	}
+	
 	public Message retrieveMissing(Message msg, List<Message> executionList) {
 		
 		// cerco in coda
@@ -577,7 +601,7 @@ public class Receiver extends Thread {
 					if (!mess.isAck) {
 						// il messaggio non è un ack
 						
-						if (checkExistance(mess, executionList)) {
+						if (checkAlreadyProcessed(mess, executionList)) {
 							// se il messaggio esiste già significa che è stata richiesta une ritrasmissione perchè l'handler non ha ricevuto l'ack di inserimento i coda
 							// quindi reinvio semplicemente quell'ack
 							
