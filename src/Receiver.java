@@ -849,7 +849,7 @@ public class Receiver extends Thread {
 					}
 					
 					printExecuted(executionList);
-					busy = true;
+					busy = false;
 				}
 			}
 			catch (Exception e) {
