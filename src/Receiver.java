@@ -594,7 +594,8 @@ public class Receiver extends Thread {
 				
 				//mess.print();
 				
-				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send") && !mess.type.equals("missing")) {
+				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send") && !mess.type.equals("missing") 
+						&& !mess.type.equals("shouldEx") && !mess.type.equals("go")) {
 					
 					//mess.print();
 					
