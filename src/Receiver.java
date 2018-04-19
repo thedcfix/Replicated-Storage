@@ -808,13 +808,10 @@ public class Receiver extends Thread {
 				if (isFullyOk()) {
 					Message request = new Message(queue.get(0));
 					
-					request.type = "send";
-					request.ackSource = IP;
-					request.isAck = false;
-					request.isRetransmit = false;
-					request.executable = false;
+					request.type = "ack";
 					
-					sendMulticast(request, false);
+					sendMulticast(request, true);
+					System.out.println("Inviato ack in multicast da " + IP);
 				}
 				
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
