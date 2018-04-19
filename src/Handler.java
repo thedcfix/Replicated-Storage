@@ -46,6 +46,7 @@ public class Handler extends Thread{
 		
 		Message msg;
 		int clientID = server.getClientID();
+		boolean first = true;
 		
 		while(true) {
 			try {
@@ -61,6 +62,13 @@ public class Handler extends Thread{
 		           msg.clock = server.getClock();
 		           msg.source = IP;
 		           msg.clientID = clientID;
+		           
+		           if (!first)
+		        	   msg.hasPrevious = true;
+		           else {
+		        	   msg.hasPrevious = false;
+		        	   first = false;
+		           }
 		           
 		           queue.getQueue().add(msg);
 		           new DeliveryService(queue, msg, SERVERS_PORT, confirmation).start();

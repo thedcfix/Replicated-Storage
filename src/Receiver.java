@@ -564,7 +564,12 @@ public class Receiver extends Thread {
 			
 			Message first = queue.get(0);
 			
-			if (!first.executable && checkExistance(first, executionList)) {
+			if (!first.hasPrevious) {
+				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
+					first.executable = true;
+				}
+			}
+			else if (!first.executable && checkExistance(first, executionList)) {
 				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
 					first.executable = true;
 				}
@@ -575,7 +580,6 @@ public class Receiver extends Thread {
 	public void run() {
 		
 		byte[] buff = new byte[8192];
-		boolean first = true;
 		long cycle = 0;
 		int cyclesToRetransmit = 8;
 		
@@ -616,17 +620,8 @@ public class Receiver extends Thread {
 								sendUDP(mess, DELIVERY_PORT);
 								mess.cycle = cycle;
 								
-								// gestisco l'ordinamento in ricezione da parte deglia trli server
-								if (!first) {
-									mess.hasPrevious = true;
-								}
-								else {
-									mess.hasPrevious = false;
-									first = false;
-								}
-								
 								// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
-								mess.executable = true;
+								//mess.executable = true;
 								
 								queue.add(mess);
 								
@@ -650,7 +645,7 @@ public class Receiver extends Thread {
 									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
 									mess.cycle = cycle;
 									
-									if (mess.hasPrevious) {
+									/*if (mess.hasPrevious) {
 										if(checkExistance(mess, executionList)) {
 											// esiste un messaggio precedente quindi posso marcare questo come eseguibile
 											mess.executable = true;
@@ -669,7 +664,7 @@ public class Receiver extends Thread {
 										if (mess.equalsPrevious(queue.get(0))) {
 											queue.get(0).executable = true;
 										}
-									}
+									}*/
 									
 									queue.add(mess);
 									
