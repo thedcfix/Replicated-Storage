@@ -39,10 +39,6 @@ public class Client {
 		
 		out.writeObject(new Message("write", id, value));
 		out.flush();
-		
-		// attendo conferma avvenuta scrittura
-		/*@SuppressWarnings("unused")
-		Message txt = (Message) in.readObject();*/
 	}
 	
 	// tells the server it wants to disconnect (to avoid broken connection that could generate exceptions on the server)

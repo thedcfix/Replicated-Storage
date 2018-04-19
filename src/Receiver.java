@@ -1,7 +1,5 @@
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,7 +13,6 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class Receiver extends Thread {
 	
@@ -49,7 +46,7 @@ public class Receiver extends Thread {
 		receivedMessages = new ArrayList<>();
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
-		//servers.add("192.168.1.221");
+		servers.add("192.168.1.221");
 		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT).start();
@@ -291,19 +288,6 @@ public class Receiver extends Thread {
 		System.out.println("\n");
 	}
 	
-	private boolean valid() {
-		if (queue.size() != 0) {
-			if (queue.get(0).source.equals(IP)) {
-				return true;
-			}
-			else {
-				return false;
-			}
-		}
-		
-		return false;
-	}
-	
 	private void cleanQueue(List<Message> executionList) {
 		try {
 			
@@ -406,36 +390,6 @@ public class Receiver extends Thread {
 		}
 		
 		return false;
-	}
-	
-	private void ackForwarding() throws IOException, InterruptedException {
-		
-		int number;
-		
-		for (int i=0; i< receivedMessages.size(); ) {
-			
-			Message okMsg = receivedMessages.get(i);
-			number = count(okMsg, receivedMessages);
-			
-			if (number == servers.size()) {				
-				// invio le richieste di ack una sola volta
-				if (!okMsg.requestedAck) {
-					okMsg.requestedAck = true;
-					
-					Message request = new Message(okMsg);
-					
-					request.type = "send";
-					request.ackSource = IP;
-					request.isAck = false;
-					request.isRetransmit = false;
-					request.executable = false;
-					
-					sendMulticast(request, false);
-				}
-			}
-			
-			i += number;
-		}
 	}
 	
 	private void handleRetransmissions(long cycle, int max) throws IOException, InterruptedException {
@@ -595,11 +549,7 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
-				//mess.print();
-				
-				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("send") && !mess.type.equals("missing")) {
-					
-					//mess.print();
+				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("missing")) {
 					
 					// gestione messaggi di azione e ack
 					if (!mess.isAck) {
@@ -619,9 +569,6 @@ public class Receiver extends Thread {
 								// invio conferma ricezione da parte del server all'handler
 								sendUDP(mess, DELIVERY_PORT);
 								mess.cycle = cycle;
-								
-								// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
-								//mess.executable = true;
 								
 								queue.add(mess);
 								
@@ -644,27 +591,6 @@ public class Receiver extends Thread {
 								if(!isAlreadyPresent(mess)) {
 									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
 									mess.cycle = cycle;
-									
-									/*if (mess.hasPrevious) {
-										if(checkExistance(mess, executionList)) {
-											// esiste un messaggio precedente quindi posso marcare questo come eseguibile
-											mess.executable = true;
-										}
-										else {
-											// non esiste un messaggio precedente quindi lo marco come non eseguibile e attendo la ritrasmissione del precedente
-											mess.executable = false;
-										}
-									}
-									else {
-										mess.executable = true;
-									}
-									
-									// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-									if (queue.size() != 0) {
-										if (mess.equalsPrevious(queue.get(0))) {
-											queue.get(0).executable = true;
-										}
-									}*/
 									
 									queue.add(mess);
 									
@@ -731,7 +657,7 @@ public class Receiver extends Thread {
 					}
 				}
 				else {
-					// gestione messaggi di ok, send, missing e unlock
+					// gestione messaggi di ok, missing e unlock
 					
 					if (mess.isRetransmit && mess.type.equals("ok")) {
 						// gestisco la ritrasmissione di un messaggio di ok
@@ -756,15 +682,6 @@ public class Receiver extends Thread {
 								
 								System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);mess.print();
 							}
-						}
-						else if(mess.type.equals("send") && mess.source.equals(mess.ackSource)) {
-							// gestione messaggi di send
-							
-							// invio in multicast il mio ack
-							mess.type = "ack";
-							
-							sendMulticast(mess, true);
-							System.out.println("Inviato ack in multicast da " + IP);
 						}
 						else if(mess.type.equals("missing")) {
 							
@@ -801,9 +718,6 @@ public class Receiver extends Thread {
 				// se vengono persi più messaggi in sequenza ci si ritrovacon il primo messaggio in coda non eseguibile
 				// in tal caso sblocco la situazione
 				manageLock(executionList);
-				
-				// genero richieste ack
-				//ackForwarding();
 				
 				if (isFullyOk() && !busy) {
 					Message request = new Message(queue.get(0));
