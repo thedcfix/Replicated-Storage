@@ -14,6 +14,7 @@ public class Handler extends Thread{
 	private ObjectOutputStream out;
 	
 	private Server server;
+	private int clientID;
 	
 	private int SERVERS_PORT;
 	public String IP;
@@ -23,15 +24,16 @@ public class Handler extends Thread{
 	public int DELIVERY_PORT;
 	public DatagramSocket confirmation;
 	
-	public Handler(Server server, Socket client) throws IOException {
+	public Handler(Server server, Socket client, int clientID, ObjectOutputStream out) throws IOException {
 		this.client = client;
 		this.server = server;
+		this.clientID = clientID;
 		
 		SERVERS_PORT = server.SERVERS_PORT;
 		DELIVERY_PORT = server.DELIVERY_PORT;
 		
 		in = new ObjectInputStream(client.getInputStream());
-		out = new ObjectOutputStream(client.getOutputStream());
+		this.out = out;
 		
 		queue = new SharedContent(new ArrayList<>());
 		confirmation = server.confirmation;
@@ -45,7 +47,6 @@ public class Handler extends Thread{
 		unchoker.start();
 		
 		Message msg;
-		int clientID = server.getClientID();
 		boolean first = true;
 		
 		while(true) {

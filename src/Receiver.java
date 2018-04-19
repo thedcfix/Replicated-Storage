@@ -23,6 +23,7 @@ public class Receiver extends Thread {
 	private int SERVERS_PORT;
 	private MulticastSocket multicast;
 	public String IP;
+	public Hashtable<Integer, ObjectOutputStream> usersTable;
 	
 	private List<Message> queue;
 	private List<Message> ackList;
@@ -33,9 +34,10 @@ public class Receiver extends Thread {
 	
 	public int DELIVERY_PORT = 8503;
 
-	public Receiver(int port) throws IOException {
+	public Receiver(int port, Hashtable<Integer, ObjectOutputStream> users) throws IOException {
 		
 		SERVERS_PORT = port;
+		usersTable = users;
 		
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SERVERS_PORT);
@@ -47,7 +49,7 @@ public class Receiver extends Thread {
 		receivedMessages = new ArrayList<>();
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
-		servers.add("192.168.1.221");
+		//servers.add("192.168.1.221");
 		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT).start();
@@ -587,9 +589,6 @@ public class Receiver extends Thread {
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
 		
-		// per debug
-		List<Integer> clockList = new ArrayList<>();
-		
 		while(true) {
 			
 			try {
@@ -830,13 +829,18 @@ public class Receiver extends Thread {
 				if (isFullyAcknowledged()) {
 					while (isFullyAcknowledged() && queue.get(0).executable) {
 						Message inExecution = queue.get(0);
-						executionList.add(inExecution);clockList.add(inExecution.clock);
+						executionList.add(inExecution);
 						
 						// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
 						receivedMessages.removeAll(extractOkSublist(inExecution));
 						
 						if (inExecution.type.equals("write")) {
 							storage.put(inExecution.id, inExecution.value);
+						}
+						else if (inExecution.type.equals("read") && inExecution.source.equals(IP)) {
+							// alle read risponde solo il server a cui è connesso il client
+							Integer value = storage.get(inExecution.id);
+							usersTable.get(inExecution.clientID).writeObject(new Message("response", inExecution.id, value));
 						}
 						
 						// rimuovo il messaggio eseguito dalla coda, cancello i suoi ack e lo aggiungo alla lista dei messaggi eseguiti
