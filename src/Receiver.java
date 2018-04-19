@@ -803,7 +803,19 @@ public class Receiver extends Thread {
 				manageLock(executionList);
 				
 				// genero richieste ack
-				ackForwarding();
+				//ackForwarding();
+				
+				if (isFullyOk()) {
+					Message request = new Message(queue.get(0));
+					
+					request.type = "send";
+					request.ackSource = IP;
+					request.isAck = false;
+					request.isRetransmit = false;
+					request.executable = false;
+					
+					sendMulticast(request, false);
+				}
 				
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
