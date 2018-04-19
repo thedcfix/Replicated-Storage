@@ -22,13 +22,15 @@ public class AlivenessChecker extends Thread {
 	public String IP;
 	
 	public Set<String> servers;
+	public SharedContent valid;
 	
-	public AlivenessChecker(int serversPort, Set<String> otherServers) throws IOException {
+	public AlivenessChecker(int serversPort, Set<String> otherServers, SharedContent validity) throws IOException {
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SYNC_PORT);
 		multicast.joinGroup(group);		
 		IP = InetAddress.getLocalHost().getHostAddress();
 		servers = otherServers;
+		valid = validity;
 		
 		SERVERS_PORT = serversPort;
 	}
@@ -85,11 +87,15 @@ public class AlivenessChecker extends Thread {
 				
 				if(time_finish >= time + WINDOW && flag == false) {
 					
+					valid.setValidity(true);
+					
 					// mando messaggio che conferma l'acquisizione del numero totale dei server. Il numero è garantito che non cambierà
 					// durante tutto l'holding time
 					
 					sendMulticast(new Message("unlock"));
 					Thread.sleep(HOLDING_TIME * 1000);
+					
+					valid.setValidity(false);
 					
 					servers.clear();
 					flag = true;
