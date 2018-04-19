@@ -4,7 +4,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Set;
 
 public class Server {
 	
@@ -20,13 +22,15 @@ public class Server {
 	
 	public DatagramSocket confirmation;
 	public Hashtable<Integer, ObjectOutputStream> usersTable;
+	public Set<String> otherServers;
 	
 	public Server() throws IOException {
 		connectionsReceiver = new ServerSocket(CLIENTS_PORT);
 		confirmation = new DatagramSocket(DELIVERY_PORT);
 		usersTable = new Hashtable<>();
+		otherServers = new HashSet<>();
 		
-		new Receiver(SERVERS_PORT, usersTable).start();
+		new Receiver(SERVERS_PORT, usersTable, otherServers).start();
 	}
 	
 	public int getClock() {

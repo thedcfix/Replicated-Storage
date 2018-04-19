@@ -23,12 +23,12 @@ public class AlivenessChecker extends Thread {
 	
 	public Set<String> servers;
 	
-	public AlivenessChecker(int serversPort) throws IOException {
+	public AlivenessChecker(int serversPort, Set<String> otherServers) throws IOException {
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SYNC_PORT);
 		multicast.joinGroup(group);		
 		IP = InetAddress.getLocalHost().getHostAddress();
-		servers = new HashSet<>();
+		servers = otherServers;
 		
 		SERVERS_PORT = serversPort;
 	}

@@ -27,14 +27,15 @@ public class Receiver extends Thread {
 	private Hashtable<Integer, Integer> storage;
 	private List<Message> receivedMessages;
 	
-	private Set<String> servers;
+	public Set<String> servers;
 	
 	public int DELIVERY_PORT = 8503;
 
-	public Receiver(int port, Hashtable<Integer, ObjectOutputStream> users) throws IOException {
+	public Receiver(int port, Hashtable<Integer, ObjectOutputStream> users, Set<String> otherServers) throws IOException {
 		
 		SERVERS_PORT = port;
 		usersTable = users;
+		servers = otherServers;
 		
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SERVERS_PORT);
@@ -44,12 +45,12 @@ public class Receiver extends Thread {
 		ackList = new ArrayList<>();
 		storage = new Hashtable<>();
 		receivedMessages = new ArrayList<>();
-		servers = new HashSet<>();
-		servers.add("192.168.1.176");
-		servers.add("192.168.1.221");
+		//servers = new HashSet<>();
+		//servers.add("192.168.1.176");
+		//servers.add("192.168.1.221");
 		
 		new AlivenessSender().start();
-		new AlivenessChecker(SERVERS_PORT).start();
+		new AlivenessChecker(SERVERS_PORT, servers).start();
 	}
 	
 	public void sendUDP(Message msg, int port) throws IOException, InterruptedException {
