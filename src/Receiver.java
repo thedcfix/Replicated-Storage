@@ -578,12 +578,13 @@ public class Receiver extends Thread {
 		boolean first = true;
 		long cycle = 0;
 		int cyclesToRetransmit = 8;
+		long goClock = 0;
+		boolean lock = false;
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
 		
-		// per debug
-		List<Integer> clockList = new ArrayList<>();
+		Set<String> goList = new HashSet<>();
 		
 		while(true) {
 			
@@ -772,7 +773,7 @@ public class Receiver extends Thread {
 							System.out.println("Inviato ack in multicast da " + IP);
 						}
 						else if(mess.type.equals("missing")) {
-							
+							// gestione messaggi mancanti
 							String destination = mess.ackSource;
 							
 							Message missing = new Message(retrieveMissing(mess, executionList));
@@ -783,6 +784,28 @@ public class Receiver extends Thread {
 							
 							sendUDPtoServer(missing, SERVERS_PORT, destination);
 							System.out.println("Inviato messaggio mancante a " + destination);missing.print();
+						}
+						else if(mess.type.equals("shouldEx")) {
+							
+							String destination = mess.ackSource;
+							
+							// do conferma che anche io voglio eseguire / ho eseguito lo stesso messaggio (è il mio primo in coda o l'ultimo eseguito)
+							if (queue.get(0).equalsLite(mess) || executionList.get(executionList.size() - 1).equalsLite(mess)) {
+								mess.type = "go";
+								mess.ackSource = IP;
+								
+								sendUDPtoServer(mess, SERVERS_PORT, destination);
+							}
+						}
+						else if(mess.type.equals("go")) {
+							
+							// se il messaggio per il quele ho ricevuto il go è ancora il primo in coda registro il go, altrienti resetto tutto
+							if (mess.equalsLite(queue.get(0))) {
+								goList.add(mess.ackSource);
+							}
+							else {
+								goList.clear();
+							}
 						}
 						else {
 							// gestione messaggi di unlock
@@ -821,7 +844,57 @@ public class Receiver extends Thread {
 					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 				}
 				
-				if (isFullyAcknowledged()) {
+				if (isFullyAcknowledged() && queue.get(0).executable && !lock) {
+					Message msg = new Message(queue.get(0));
+					
+					msg.type = "shouldEx";
+					msg.ackSource = IP;
+					
+					lock = true;
+					goClock = cycle;
+					
+					sendMulticast(msg, false);
+				}
+				
+				if (cycle >= goClock + cyclesToRetransmit && lock) {
+					// ritrasmetto le richieste
+					
+					Message msg = new Message(queue.get(0));
+					
+					msg.type = "shouldEx";
+					msg.ackSource = IP;
+					
+					lock = true;
+					goClock = cycle;
+					
+					sendMulticast(msg, false);
+				}
+				
+				if (goList.size() == servers.size()) {
+					// ho tutti i go e posso eseguire
+					Message inExecution = queue.get(0);
+					executionList.add(inExecution);
+					
+					// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
+					receivedMessages.removeAll(extractOkSublist(inExecution));
+					
+					if (inExecution.type.equals("write")) {
+						storage.put(inExecution.id, inExecution.value);
+					}
+					
+					// rimuovo il messaggio eseguito dalla coda, cancello i suoi ack e lo aggiungo alla lista dei messaggi eseguiti
+					ackList.removeAll(extractAckSublist());
+					queue = queue.subList(1, queue.size());
+					
+					goList.clear();
+					lock = false;
+					
+					System.out.println("Messaggio eseguito");
+					System.out.println(storage.toString());
+					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+				}
+				
+				/*if (isFullyAcknowledged()) {
 					while (isFullyAcknowledged() && queue.get(0).executable) {
 						Message inExecution = queue.get(0);
 						executionList.add(inExecution);clockList.add(inExecution.clock);
@@ -843,7 +916,7 @@ public class Receiver extends Thread {
 					}
 					
 					printExecuted(executionList);
-				}
+				}*/
 			}
 			catch (Exception e) {
 				e.printStackTrace();
