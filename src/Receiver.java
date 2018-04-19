@@ -582,6 +582,7 @@ public class Receiver extends Thread {
 		byte[] buff = new byte[8192];
 		long cycle = 0;
 		int cyclesToRetransmit = 8;
+		boolean busy = false;
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
@@ -805,10 +806,11 @@ public class Receiver extends Thread {
 				// genero richieste ack
 				//ackForwarding();
 				
-				if (isFullyOk()) {
+				if (isFullyOk() && !busy) {
 					Message request = new Message(queue.get(0));
 					
 					request.type = "ack";
+					busy = true;
 					
 					sendMulticast(request, true);
 					System.out.println("Inviato ack in multicast da " + IP);
@@ -847,6 +849,7 @@ public class Receiver extends Thread {
 					}
 					
 					printExecuted(executionList);
+					busy = true;
 				}
 			}
 			catch (Exception e) {
