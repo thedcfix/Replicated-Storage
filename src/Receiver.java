@@ -626,7 +626,7 @@ public class Receiver extends Thread {
 								}
 								
 								// lo rendo eseguibile dato che proviene da questo server ed è necessariamente già stato ricevuto in ordine
-								//mess.executable = true; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+								mess.executable = true;
 								
 								queue.add(mess);
 								
@@ -661,15 +661,15 @@ public class Receiver extends Thread {
 										}
 									}
 									else {
-										;//mess.executable = true;
+										mess.executable = true;
 									}
 									
 									// se ricevo un messaggio che è il precedente di uno bloccato, lo sblocco
-									/*if (queue.size() != 0) {
+									if (queue.size() != 0) {
 										if (mess.equalsPrevious(queue.get(0))) {
 											queue.get(0).executable = true;
 										}
-									}*/
+									}
 									
 									queue.add(mess);
 									
