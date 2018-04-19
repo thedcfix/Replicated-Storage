@@ -533,6 +533,11 @@ public class Receiver extends Thread {
 					first.executable = true;
 				}
 			}
+			
+			if (first.hasPrevious && executionList.size() == 0) {
+				// significa che il server si è appena aggiunto al pool
+				first.executable = true;
+			}
 		}
 	}
 	
