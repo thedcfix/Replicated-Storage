@@ -749,6 +749,12 @@ public class Receiver extends Thread {
 				}
 				
 				if (isFullyAcknowledged()) {
+					
+					while (!valid.getValidity()) {
+						// aspetto la finestra di validità
+						Thread.sleep(1000);
+					}
+					
 					while (isFullyAcknowledged() && queue.get(0).executable && valid.getValidity()) {
 						Message inExecution = queue.get(0);
 						executionList.add(inExecution);
@@ -772,10 +778,11 @@ public class Receiver extends Thread {
 						System.out.println("Messaggio eseguito");
 						System.out.println(storage.toString());
 						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+						
+						busy = false;
 					}
 					
 					printExecuted(executionList);
-					busy = false;
 				}
 			}
 			catch (Exception e) {
