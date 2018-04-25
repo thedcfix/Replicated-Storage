@@ -563,7 +563,7 @@ public class Receiver extends Thread {
 					if (!mess.isAck) {
 						// il messaggio non è un ack
 						
-						if (checkAlreadyProcessed(mess, executionList)) {
+						if (checkAlreadyProcessed(mess, executionList) && mess.source.equals(IP)) {
 							// se il messaggio esiste già significa che è stata richiesta une ritrasmissione perchè l'handler non ha ricevuto l'ack di inserimento i coda
 							// quindi reinvio semplicemente quell'ack
 							
@@ -752,7 +752,7 @@ public class Receiver extends Thread {
 					
 					while (!valid.getValidity()) {
 						// aspetto la finestra di validità
-						Thread.sleep(1000);
+						Thread.sleep(200);
 					}
 					
 					while (isFullyAcknowledged() && queue.get(0).executable && valid.getValidity()) {
