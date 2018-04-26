@@ -19,44 +19,47 @@ import java.util.Set;
 
 public class ServerFinder extends Thread {
 	
-	private int PORT;
-	private MulticastSocket m_socket;
-    private InetAddress multicastGroup;
+	private int UPDATE_PORT = 8505;
+	
+	private InetAddress group;
+	private MulticastSocket multicast;
+	public String IP;
+    
     public Set<String> otherServers;
     public Hashtable<Integer, Integer> storage;
     
     
-    public ServerFinder(Set<String> servers, int port, Hashtable<Integer, Integer> db) {
+    public ServerFinder(Set<String> servers, Hashtable<Integer, Integer> db) {
     	try {
-			multicastGroup = InetAddress.getByName("224.0.5.1");
-			m_socket = new MulticastSocket(PORT);
-			m_socket.joinGroup(multicastGroup);
+    		group = InetAddress.getByName("224.0.5.1");
+    		multicast = new MulticastSocket(UPDATE_PORT);
+    		multicast.joinGroup(group);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
     	
     	otherServers = servers;
-    	PORT = port;
     	storage = db;
     }
 	
-    public void send(Message msg) throws IOException, ClassNotFoundException {
+    public void sendMulticast(Message msg) throws IOException, InterruptedException {
+		
+		msg.source = IP;
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
 		ObjectOutputStream oos = new ObjectOutputStream(baos);
 		oos.writeObject(msg);
 		byte[] data = baos.toByteArray();
 		
-		DatagramPacket hi = new DatagramPacket(data, data.length, multicastGroup, PORT);
+		DatagramPacket packet = new DatagramPacket(data, data.length, group, UPDATE_PORT);
 		
-		m_socket.send(hi);
+		multicast.send(packet);
+		Thread.sleep(500);
 	}
 
 	
 	@SuppressWarnings("unchecked")
 	public void run() {
-		
-		byte[] buffer = new byte[4096];
 		
 		while (true) {
 			try {
@@ -65,13 +68,15 @@ public class ServerFinder extends Thread {
 				Message hello = new Message("hello");
 				hello.source = InetAddress.getLocalHost().getHostAddress();
 				
-				send(hello);
+				sendMulticast(hello);
+				
+				byte[] buffer = new byte[4096];
 				
 				while (true) {
 					try {
 						// getting responses
 						DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
-						m_socket.receive(receivePacket);
+						multicast.receive(receivePacket);
 						
 						ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
 			            ObjectInputStream ois = new ObjectInputStream(bais);
@@ -92,9 +97,9 @@ public class ServerFinder extends Thread {
 								oos.writeObject(storage);
 								byte[] data = baos.toByteArray();
 								
-								DatagramPacket hi = new DatagramPacket(data, data.length, multicastGroup, PORT);
+								DatagramPacket hi = new DatagramPacket(data, data.length, group, UPDATE_PORT);
 								
-								m_socket.send(hi);
+								multicast.send(hi);
 							}
 			            }
 			            
@@ -113,7 +118,7 @@ public class ServerFinder extends Thread {
 				}
 				
 				
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
