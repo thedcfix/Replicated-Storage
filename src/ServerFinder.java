@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.UnknownHostException;
 import java.util.Hashtable;
 import java.util.Set;
 
@@ -24,12 +25,10 @@ public class ServerFinder extends Thread {
 	private InetAddress group;
 	private MulticastSocket multicast;
 	public String IP;
-    
-    public Set<String> otherServers;
-    public Hashtable<Integer, Integer> storage;
+	public SharedContent db;
     
     
-    public ServerFinder(Set<String> servers, Hashtable<Integer, Integer> db) {
+    public ServerFinder(SharedContent db) throws UnknownHostException {
     	try {
     		group = InetAddress.getByName("224.0.5.1");
     		multicast = new MulticastSocket(UPDATE_PORT);
@@ -38,8 +37,8 @@ public class ServerFinder extends Thread {
 			e.printStackTrace();
 		}
     	
-    	otherServers = servers;
-    	storage = db;
+    	this.db = db;
+    	IP = InetAddress.getLocalHost().getHostAddress();
     }
 	
     public void sendMulticast(Message msg) throws IOException, InterruptedException {
@@ -94,7 +93,7 @@ public class ServerFinder extends Thread {
 								// sending the update to keep everything consistent
 								ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
 								ObjectOutputStream oos = new ObjectOutputStream(baos);
-								oos.writeObject(storage);
+								oos.writeObject(db.getStorage());
 								byte[] data = baos.toByteArray();
 								
 								DatagramPacket hi = new DatagramPacket(data, data.length, group, UPDATE_PORT);
@@ -108,8 +107,8 @@ public class ServerFinder extends Thread {
 			            	// an exception (wanted) that brings here.
 			            	
 			            	// Updating the local copy of the data.
-			            	storage = ((Hashtable<Integer, Integer>) communication);
-			            	System.out.println("Aggiornato DB locale: " + storage.toString());
+			            	db.setStorage((Hashtable<Integer, Integer>) communication);
+			            	System.out.println("Aggiornato DB locale: " + db.getStorage().toString());
 			            }
 						
 					} catch (IOException | ClassNotFoundException e) {

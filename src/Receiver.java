@@ -24,11 +24,12 @@ public class Receiver extends Thread {
 	
 	private List<Message> queue;
 	private List<Message> ackList;
-	public Hashtable<Integer, Integer> storage;
+	private Hashtable<Integer, Integer> storage;
 	private List<Message> receivedMessages;
 	
 	public Set<String> servers;
 	public SharedContent valid;
+	public SharedContent db;
 	
 	public int DELIVERY_PORT = 8503;
 
@@ -47,13 +48,15 @@ public class Receiver extends Thread {
 		storage = new Hashtable<>();
 		receivedMessages = new ArrayList<>();
 		valid = new SharedContent(false);
+		db = new SharedContent(storage);
+		
 		//servers = new HashSet<>();
 		//servers.add("192.168.1.176");
 		//servers.add("192.168.1.221");
 		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT, servers, valid).start();
-		new ServerFinder(servers, storage).start();;
+		new ServerFinder(db).start();;
 	}
 	
 	public void sendUDP(Message msg, int port) throws IOException, InterruptedException {
@@ -755,6 +758,8 @@ public class Receiver extends Thread {
 						// aspetto la finestra di validità
 						Thread.sleep(200);
 					}
+					
+					storage = db.getStorage();
 					
 					while (isFullyAcknowledged() && queue.get(0).executable && valid.getValidity()) {
 						Message inExecution = queue.get(0);
