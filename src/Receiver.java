@@ -24,7 +24,7 @@ public class Receiver extends Thread {
 	
 	private List<Message> queue;
 	private List<Message> ackList;
-	private Hashtable<Integer, Integer> storage;
+	public Hashtable<Integer, Integer> storage;
 	private List<Message> receivedMessages;
 	
 	public Set<String> servers;
@@ -53,6 +53,7 @@ public class Receiver extends Thread {
 		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT, servers, valid).start();
+		new ServerFinder(servers, 8505, storage).start();;
 	}
 	
 	public void sendUDP(Message msg, int port) throws IOException, InterruptedException {
