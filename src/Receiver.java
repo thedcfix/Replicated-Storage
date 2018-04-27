@@ -56,7 +56,7 @@ public class Receiver extends Thread {
 		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT, servers, valid).start();
-		new ServerFinder(db).start();;
+		new StorageUpdater(db).start();;
 	}
 	
 	public void sendUDP(Message msg, int port) throws IOException, InterruptedException {

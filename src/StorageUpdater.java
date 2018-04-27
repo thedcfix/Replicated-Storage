@@ -18,7 +18,7 @@ import java.util.Set;
  * distribution of the copies of such DB.
  */
 
-public class ServerFinder extends Thread {
+public class StorageUpdater extends Thread {
 	
 	private int UPDATE_PORT = 8505;
 	
@@ -28,7 +28,7 @@ public class ServerFinder extends Thread {
 	public SharedContent db;
     
     
-    public ServerFinder(SharedContent db) throws UnknownHostException {
+    public StorageUpdater(SharedContent db) throws UnknownHostException {
     	try {
     		group = InetAddress.getByName("224.0.5.1");
     		multicast = new MulticastSocket(UPDATE_PORT);
