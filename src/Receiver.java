@@ -405,23 +405,9 @@ public class Receiver extends Thread {
 			
 			for (Message m : queue) {
 				if(cycle >= m.cycle + max) {
-					if (count(m, receivedMessages) == servers.size()) {
-						// il messaggio ha già tutti gli ok e quindi mancano degli ack
-						manageRetransmissions(extractAckList(m));
-						System.out.println("E' stata richiesta la ritrasmissione di un ack relativo a:");m.print();
-					}
-					else {
-						// mancano dei messaggi di ok quindi ritrasmetto tutto
-						Message request = new Message(m);
-						
-						request.type = "ok";
-						request.isAck = false;
-						request.requestedAck = false;
-						request.isRetransmit = true;
-						request.executable = false;
-						request.ackSource = IP;
-						
-						sendMulticast(request, false);
+					if (count(m, ackList) != servers.size()) {
+						// mancano dei messaggi di ack quindi ritrasmetto tutto						
+						sendMulticast(m, false);
 						
 						System.out.println("E' stata richiesta la ritrasmissione di un messaggio di ok relativo a:");m.print();
 					}
@@ -434,10 +420,10 @@ public class Receiver extends Thread {
 		
 		// potrebbe invece mancare proprio il messaggio (quello di ok ce l'ho per forza perchè altrimenti gli altri server non possono andare avanti)
 		// come minimo mi arriverebbe una ritrasmissione dei loro ok
-		for (Message ok : receivedMessages) {
-			if(!find(ok)) {
+		for (Message ack : ackList) {
+			if(!find(ack)) {
 				// significa che il messaggio esiste ma io non lo ho, ne chiedo ritrasmissione segnandolo come missing
-				Message request = new Message(ok);
+				Message request = new Message(ack);
 				
 				request.type = "missing";
 				request.isAck = false;
@@ -446,9 +432,9 @@ public class Receiver extends Thread {
 				request.executable = false;
 				request.ackSource = IP;
 				
-				sendUDPtoServer(request, SERVERS_PORT, ok.ackSource);
+				sendUDPtoServer(request, SERVERS_PORT, ack.ackSource);
 				
-				System.out.println("E' stata richiesta la ritrasmissione di un messaggio mancante a cui corrisponde il messaggio di ok:");ok.print();
+				System.out.println("E' stata richiesta la ritrasmissione di un messaggio mancante a cui corrisponde il messaggio di ok:");ack.print();
 			}
 		}
 	}
@@ -528,12 +514,12 @@ public class Receiver extends Thread {
 			Message first = queue.get(0);
 			
 			if (!first.hasPrevious) {
-				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
+				if (count(first, ackList) == servers.size()) {
 					first.executable = true;
 				}
 			}
 			else if (!first.executable && checkExistance(first, executionList)) {
-				if (count(first, receivedMessages) == servers.size() && count(first, ackList) == servers.size()) {
+				if (count(first, ackList) == servers.size()) {
 					first.executable = true;
 				}
 			}
@@ -561,7 +547,7 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
-				if (!mess.type.equals("unlock") && !mess.type.equals("ok") && !mess.type.equals("missing")) {
+				if (!mess.type.equals("unlock") && !mess.type.equals("missing")) {
 					
 					// gestione messaggi di azione e ack
 					if (!mess.isAck) {
@@ -615,41 +601,24 @@ public class Receiver extends Thread {
 							}
 							
 							// in entrambi i casi rispondo emettendo il mio messaggio di ok
-							Message okMsg = new Message(mess);
+							Message ackMsg = new Message(mess);
 							
-							okMsg.type = "ok";
-							okMsg.ackSource = IP;
-							okMsg.isRetransmit = false;
-							okMsg.executable = false;
+							ackMsg.type = "ack";
+							ackMsg.isAck = true;
+							ackMsg.ackSource = IP;
+							ackMsg.isRetransmit = false;
+							ackMsg.executable = false;
 							
 							// invio il mio messaggio di ok
-							sendMulticast(okMsg, false);
+							sendMulticast(ackMsg, false);
 							
 							if(!mess.source.equals(IP)) {
-								System.out.println("Messaggio di ok mandato a " + mess.source + " da " + IP);
+								System.out.println("Messaggio di ack mandato a " + mess.source + " da " + IP);
 							}
 						}
 					}
 					else {
-						// il messaggio è un ack
-						
-						if (mess.isRetransmit) {
-							// eseguo la ritrasmissione del mio ack per il messaggio inviatomi
-							
-							// invio in multicast il mio ack
-							String destination = mess.ackSource;
-							
-							mess.type = "ack";
-							mess.isAck = true;
-							mess.isRetransmit = false;
-							mess.executable = false;
-							mess.ackSource = IP;
-							
-							sendUDPtoServer(mess, SERVERS_PORT, destination);
-							System.out.println("Ack ritrasmesso a " + destination);
-						}
-						else {
-							if (!isAlreadyPresent(mess, "list")) {
+						if (!isAlreadyPresent(mess, "list")) {
 								// aggiungo l'ack alla lista delgi ack ricevuti
 								Message m = new Message(mess);
 								
@@ -664,38 +633,12 @@ public class Receiver extends Thread {
 								Collections.sort(ackList, (m1, m2) -> m1.clock - m2.clock);
 								
 								System.out.println("Ack da " + mess.ackSource + " ricevuto e inserito in lista");mess.print();
-							}
 						}
 					}
 				}
 				else {
-					// gestione messaggi di ok, missing e unlock
-					
-					if (mess.isRetransmit && mess.type.equals("ok")) {
-						// gestisco la ritrasmissione di un messaggio di ok
-						
-						String destination = mess.ackSource;
-						
-						mess.isRetransmit = false;
-						mess.ackSource = IP;
-						
-						sendUDPtoServer(mess, SERVERS_PORT, destination);
-						System.out.println("Messaggio di ok ritrasmesso a " + destination);
-					}
-					else {
-						if (mess.type.equals("ok")) {
-							if(!isAlreadyPresent(mess, "ok")){
-								// gestisco il fatto che gli altri server abbiano ricevuto il mio messaggio e lo abbiano aggiunto in coda
-								receivedMessages.add(mess);
-								
-								// ordino la lista
-								Collections.sort(receivedMessages, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(receivedMessages, (m1, m2) -> m1.clock - m2.clock);
-								
-								System.out.println("Ricevuto messaggio di ok da parte di " + mess.ackSource);mess.print();
-							}
-						}
-						else if(mess.type.equals("missing")) {
+					// gestione messaggi di missing e unlock
+					if(mess.type.equals("missing")) {
 							
 							String destination = mess.ackSource;
 							
@@ -707,39 +650,27 @@ public class Receiver extends Thread {
 							
 							sendUDPtoServer(missing, SERVERS_PORT, destination);
 							System.out.println("Inviato messaggio mancante a " + destination);missing.print();
-						}
-						else {
-							// gestione messaggi di unlock
-							
-							cycle++;
-							
-							// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
-							cleanQueue(executionList);
-							cleanAck(executionList);
-							cleanOk(executionList);
-							handleRetransmissions(cycle, cyclesToRetransmit);
-						}
+					}
+					else {
+						// gestione messaggi di unlock
+						
+						cycle++;
+						
+						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
+						cleanQueue(executionList);
+						cleanAck(executionList);
+						cleanOk(executionList);
+						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
 				
 				// mi assicuro che eventuali messaggi ricevuti con estremo ritardo non vadano a sporcare le code di esecuzione
 				cleanQueue(executionList);
 				cleanAck(executionList);
-				cleanOk(executionList);
 				
 				// se vengono persi più messaggi in sequenza ci si ritrovacon il primo messaggio in coda non eseguibile
 				// in tal caso sblocco la situazione
 				manageLock(executionList);
-				
-				if (isFullyOk() && !busy) {
-					Message request = new Message(queue.get(0));
-					
-					request.type = "ack";
-					busy = true;
-					
-					sendMulticast(request, true);
-					System.out.println("Inviato ack in multicast da " + IP);
-				}
 				
 				if (queue.size() != 0 && !mess.type.equals("unlock")) {
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
@@ -747,8 +678,8 @@ public class Receiver extends Thread {
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
 					printList();
 					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
-					printOk();
-					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");
+					/*printOk();
+					System.out.println("\n-------------------------------------------------------------------------------------------------------\n");*/
 					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 				}
 				
@@ -766,7 +697,7 @@ public class Receiver extends Thread {
 						executionList.add(inExecution);
 						
 						// cancello gli ok di conferma dei server dato che il messaggio è arrivato allo stadio finale
-						receivedMessages.removeAll(extractOkSublist(inExecution));
+						//receivedMessages.removeAll(extractOkSublist(inExecution));
 						
 						if (inExecution.type.equals("write")) {
 							storage.put(inExecution.id, inExecution.value);
