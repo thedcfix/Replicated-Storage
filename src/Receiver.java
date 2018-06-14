@@ -125,12 +125,14 @@ public class Receiver extends Thread {
 		
 		int finalIdx = 0;
 		
-		for(Message m : ackList) {
-			if (m.equalsLite(queue.get(0))) {
-				finalIdx++;
-			}
-			else {
-				break;
+		if (queue.size() != 0) {
+			for(Message m : ackList) {
+				if (m.equalsLite(queue.get(0))) {
+					finalIdx++;
+				}
+				else {
+					break;
+				}
 			}
 		}
 		
@@ -434,7 +436,7 @@ public class Receiver extends Thread {
 				
 				sendUDPtoServer(request, SERVERS_PORT, ack.ackSource);
 				
-				System.out.println("E' stata richiesta la ritrasmissione di un messaggio mancante a cui corrisponde il messaggio di ok:");ack.print();
+				System.out.println("E' stata richiesta la ritrasmissione di un messaggio mancante a cui corrisponde l'ack:");ack.print();
 			}
 		}
 	}
