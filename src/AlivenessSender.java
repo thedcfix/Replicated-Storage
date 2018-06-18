@@ -7,7 +7,7 @@ import java.net.MulticastSocket;
 
 public class AlivenessSender extends Thread {
 	
-	private int WINDOW = 8;
+	private int WINDOW = 2;
 	private int SYNC_PORT = 8504;
 	
 	private InetAddress group;

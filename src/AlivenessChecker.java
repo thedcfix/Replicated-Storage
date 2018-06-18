@@ -12,8 +12,8 @@ import java.util.concurrent.TimeUnit;
 
 public class AlivenessChecker extends Thread {
 	
-	private int WINDOW = 8;
-	private int HOLDING_TIME = 3;
+	private int WINDOW = 2;
+	private int HOLDING_TIME = 1;
 	private int SERVERS_PORT;
 	private int SYNC_PORT = 8504;
 	
