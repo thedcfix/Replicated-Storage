@@ -440,7 +440,7 @@ public class Receiver extends Thread {
 		
 		byte[] buff = new byte[8192];
 		long cycle = 0;
-		int cyclesToRetransmit = 8;
+		int cyclesToRetransmit = 4;
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
@@ -473,6 +473,7 @@ public class Receiver extends Thread {
 								mess.cycle = cycle;
 								
 								if (mess.type.equals("read")) {
+									storage = db.getStorage();
 									// alle read risponde solo il server a cui è connesso il client
 									Integer value = storage.get(mess.id);
 									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
