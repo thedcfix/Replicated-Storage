@@ -484,13 +484,16 @@ public class Receiver extends Thread {
 								msg.isRetransmit = false;
 								msg.executable = false;
 								
-								sendMulticast(msg, false);
+								if(!mess.type.equals("read")) {
+									sendMulticast(msg, false);
+								}
+								
 								System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");mess.print();
 							}
 							else {
 								// il messaggio proviene da un altro server e non e una read
 								
-								if(!isAlreadyPresent(mess) && !mess.type.equals("read")) {
+								if(!isAlreadyPresent(mess)) {
 									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
 									mess.cycle = cycle;
 									
@@ -504,7 +507,7 @@ public class Receiver extends Thread {
 								}
 							}
 							
-							// in entrambi i casi rispondo emettendo il mio messaggio di ok
+							// in entrambi i casi rispondo emettendo il mio messaggio di ack
 							Message ackMsg = new Message(mess);
 							
 							ackMsg.type = "ack";
@@ -513,8 +516,10 @@ public class Receiver extends Thread {
 							ackMsg.isRetransmit = false;
 							ackMsg.executable = false;
 							
-							// invio il mio messaggio di ok
-							sendMulticast(ackMsg, false);
+							// invio il mio messaggio di ack
+							if (!mess.type.equals("read")) {
+								sendMulticast(ackMsg, false);
+							}
 							
 							if(!mess.source.equals(IP)) {
 								System.out.println("Messaggio di ack mandato a " + mess.source + " da " + IP);
