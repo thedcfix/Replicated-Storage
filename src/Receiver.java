@@ -473,10 +473,10 @@ public class Receiver extends Thread {
 								mess.cycle = cycle;
 								
 								if (mess.type.equals("read")) {
-									storage = db.getStorage();
 									// alle read risponde solo il server a cui è connesso il client
-									Integer value = storage.get(mess.id);
+									Integer value = db.getStorage().get(mess.id);
 									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
+									storage = db.getStorage();
 								}
 								else {
 									// é una write
