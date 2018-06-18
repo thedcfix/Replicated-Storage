@@ -488,9 +488,9 @@ public class Receiver extends Thread {
 								System.out.println("Messaggio inviato dal client ricevuto e inserito in coda. Inoltrati i messaggi agli altri server");mess.print();
 							}
 							else {
-								// il messaggio proviene da un altro server
+								// il messaggio proviene da un altro server e non e una read
 								
-								if(!isAlreadyPresent(mess)) {
+								if(!isAlreadyPresent(mess) && !mess.type.equals("read")) {
 									// il messaggio è stato inviato da un altro server e io devo inserirlo in coda e mandare un messaggio di ok al mittente
 									mess.cycle = cycle;
 									
