@@ -472,24 +472,25 @@ public class Receiver extends Thread {
 								sendUDP(mess, DELIVERY_PORT);
 								mess.cycle = cycle;
 								
-								queue.add(mess);
-								
-								// ordino la coda
-								Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
-								Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
-								
-								// invio il mio messaggio agli altri server
-								Message msg = new Message(mess);
-	
-								msg.isRetransmit = false;
-								msg.executable = false;
-								
 								if (mess.type.equals("read")) {
 									// alle read risponde solo il server a cui è connesso il client
 									Integer value = storage.get(mess.id);
 									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
 								}
 								else {
+									// é una write
+									queue.add(mess);
+									
+									// ordino la coda
+									Collections.sort(queue, (m1, m2) -> m1.source.hashCode() - m2.source.hashCode());
+									Collections.sort(queue, (m1, m2) -> m1.clock - m2.clock);
+									
+									// invio il mio messaggio agli altri server
+									Message msg = new Message(mess);
+		
+									msg.isRetransmit = false;
+									msg.executable = false;
+									
 									sendMulticast(msg, false);
 								}
 								
