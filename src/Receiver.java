@@ -484,7 +484,12 @@ public class Receiver extends Thread {
 								msg.isRetransmit = false;
 								msg.executable = false;
 								
-								if(!mess.type.equals("read")) {
+								if (mess.type.equals("read")) {
+									// alle read risponde solo il server a cui è connesso il client
+									Integer value = storage.get(mess.id);
+									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
+								}
+								else {
 									sendMulticast(msg, false);
 								}
 								
