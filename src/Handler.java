@@ -60,7 +60,10 @@ public class Handler extends Thread{
 		           	break;
 	           }
 	           else {
-		           msg.clock = server.getClock();
+	        	   // assegno scalar clock solo alle write, le read sono eseguite in locale istantaneamente
+	        	   if (msg.type.equals("write")) {
+	        		   msg.clock = server.getClock();
+	        	   }
 		           msg.source = IP;
 		           msg.clientID = clientID;
 		           
