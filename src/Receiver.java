@@ -9,7 +9,6 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
@@ -50,13 +49,9 @@ public class Receiver extends Thread {
 		valid = new SharedContent(false);
 		db = new SharedContent(storage);
 		
-		//servers = new HashSet<>();
-		//servers.add("192.168.1.176");
-		//servers.add("192.168.1.221");
-		
 		new AlivenessSender().start();
 		new AlivenessChecker(SERVERS_PORT, servers, valid).start();
-		new StorageUpdater(db).start();;
+		new StorageUpdater(db).start();
 	}
 	
 	public void sendUDP(Message msg, int port) throws IOException, InterruptedException {
@@ -140,44 +135,6 @@ public class Receiver extends Thread {
 		
 	}
 	
-	private List<Message> extractOkSublist() {
-		
-		int finalIdx = 0;
-		
-		if (queue.size() != 0) {
-		
-			for(Message m : receivedMessages) {
-				if (m.equalsLite(queue.get(0))) {
-					finalIdx++;
-				}
-				else {
-					break;
-				}
-			}
-		
-		}
-		
-		return receivedMessages.subList(0, finalIdx);
-		
-	}
-	
-	private List<Message> extractOkSublist(Message msg) {
-		
-		int finalIdx = 0;
-		
-		for(Message m : receivedMessages) {
-			if (m.equalsLite(msg)) {
-				finalIdx++;
-			}
-			else {
-				break;
-			}
-		}
-		
-		return receivedMessages.subList(0, finalIdx);
-		
-	}
-	
 	private boolean isFullyAcknowledged() {
 		
 		List<Message> acks = extractAckSublist();
@@ -190,19 +147,7 @@ public class Receiver extends Thread {
 		}
 	}
 	
-	private boolean isFullyOk() {
-		
-		List<Message> ok = extractOkSublist();
-		
-		if (ok.size() == servers.size()) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
-	
-	private void manageRetransmissions(List<Message> acks) throws IOException, InterruptedException {
+	/*private void manageRetransmissions(List<Message> acks) throws IOException, InterruptedException {
 		
 		@SuppressWarnings("unchecked")
 		HashSet<String> IPs = (HashSet<String>) ((HashSet<String>) servers).clone();
@@ -226,7 +171,7 @@ public class Receiver extends Thread {
 		for (String IP : IPs) {
 			sendUDPtoServer(msg, SERVERS_PORT, IP);
 		}
-	}
+	}*/
 	
 	private boolean isAlreadyPresent(Message msg) {
 		boolean flag = false;
@@ -269,17 +214,6 @@ public class Receiver extends Thread {
 		System.out.println("\nCoda dei messaggi: \n");
 		
 		for (Message m : queue) {
-			m.print();
-		}
-		
-		System.out.println("\n");
-	}
-	
-	private void printOk() {
-		
-		System.out.println("Coda dei messaggi di ok: \n");
-		
-		for (Message m : receivedMessages) {
 			m.print();
 		}
 		
@@ -333,24 +267,6 @@ public class Receiver extends Thread {
 		}
 	}
 	
-	private void cleanOk(List<Message> executionList) {
-		try {
-			
-			if (receivedMessages.size() != 0) {
-				for (Message m1 : receivedMessages) {
-					for (Message m2 : executionList) {
-						if (m1.equalsLite(m2)) {
-							receivedMessages.remove(m1);
-						}
-					}
-				}
-			}
-		}
-		catch (Exception e) {
-			;
-		}
-	}
-	
 	private void printExecuted(List<Message> list) {
 		int i = 1;
 		
@@ -376,19 +292,6 @@ public class Receiver extends Thread {
 		}
 		
 		return counter;
-	}
-	
-	private List<Message> extractAckList(Message msg) {
-		
-		List<Message> list = new ArrayList<>();
-		
-		for (Message m : ackList) {
-			if (m.equalsLite(msg)){
-				list.add(new Message(m));
-			}
-		}
-		
-		return list;
 	}
 	
 	private boolean find(Message msg) {
@@ -538,7 +441,6 @@ public class Receiver extends Thread {
 		byte[] buff = new byte[8192];
 		long cycle = 0;
 		int cyclesToRetransmit = 8;
-		boolean busy = false;
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
@@ -661,7 +563,6 @@ public class Receiver extends Thread {
 						// gestisco i messaggi bloccati in coda chiedendo eventuali ritrasmissioni
 						cleanQueue(executionList);
 						cleanAck(executionList);
-						cleanOk(executionList);
 						handleRetransmissions(cycle, cyclesToRetransmit);
 					}
 				}
@@ -717,8 +618,6 @@ public class Receiver extends Thread {
 						System.out.println("Messaggio eseguito");
 						System.out.println(storage.toString());
 						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
-						
-						busy = false;
 					}
 					
 					printExecuted(executionList);
