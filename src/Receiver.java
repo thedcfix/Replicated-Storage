@@ -436,6 +436,18 @@ public class Receiver extends Thread {
 		}
 	}
 	
+	private Message inProcessing(int id, int clientID) {
+		Message msg = null;
+		
+		for (Message m: queue) {
+			if (m.id == id && m.clientID == clientID) {
+				msg = m;
+			}
+		}
+		
+		return msg;
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
@@ -473,10 +485,24 @@ public class Receiver extends Thread {
 								mess.cycle = cycle;
 								
 								if (mess.type.equals("read")) {
+									
 									// alle read risponde solo il server a cui è connesso il client
-									Integer value = db.getStorage().get(mess.id);
-									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
-									storage = db.getStorage();
+									
+									Message mg = inProcessing(mess.id, mess.clientID);
+									
+									if (mg == null) {
+										// significa che il messaggio richiesto dalla read è già stato processato quindi restituisco il valore nel DB
+										Integer value = db.getStorage().get(mess.id);
+										usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, value));
+										storage = db.getStorage();
+									}
+									else {
+										// significa che in coda c'è un messaggio inviato dallo stesso client e la lettura va fatto su quel valore in coda
+										// ovviamente l'ultima write su quell'ID
+										usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, mg.value));
+									}
+									
+									
 								}
 								else {
 									// é una write
