@@ -85,6 +85,18 @@ public class Receiver extends Thread {
 		multicast.send(packet);
 	}
 	
+	// verifico se un messaggio ha tutti gli ack
+	public boolean isFullyAcknowledged(Message msg, Queue ack) {
+		
+		if (msg == null)
+			return false;
+		
+		if (ack.extractSublist(msg).size() >= servers.size())
+			return true;
+		else
+			return false;
+	}
+	
 	public void run() {
 		
 		byte[] buff = new byte[8192];
@@ -166,9 +178,24 @@ public class Receiver extends Thread {
 						}
 					}
 					
-					
 					queue.print();
 					ack.print();
+					
+					// separatore iterazioni
+					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+					
+					if (isFullyAcknowledged(queue.getFirst(), ack)) {
+						Message toExecute = queue.removeFirst();
+						ack.remove(toExecute);
+						storage.put(toExecute.id, toExecute.value);
+						
+						
+						
+						System.out.println("Messaggio eseguito: " + storage.toString());
+					}
+					
+					
+					// separatore iterazioni
 					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 				}
 				

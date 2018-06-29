@@ -64,6 +64,17 @@ public class Message implements Serializable{
 		}
 	}
 	
+	public boolean equalsLite(Message m) {
+		
+		if (this.lamport_clock == m.lamport_clock && this.source.equals(m.source) && 
+				this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
 	public void print() {
 		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Lamport clock: " + lamport_clock + 
 				". Local clock: " + lamport_clock + ". Ack source: " + sender + ". Is ack: " + isAck + ". Is valid: " + valid);

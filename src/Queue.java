@@ -53,11 +53,15 @@ public class Queue {
 			if (!queue.isEmpty()) {
 				m = queue.get(0);
 				queue = queue.subList(1, queue.size());
-				return queue.get(0);
+				return m;
 			}
 			else
 				return null;
 		}
+	}
+	
+	public void remove(Message mess) {
+		queue.removeAll(extractSublist(mess));
 	}
 	
 	public boolean isEmpty() {
@@ -95,5 +99,24 @@ public class Queue {
 			
 			System.out.println("\n");
 		}
+	}
+	
+	public List<Message> extractSublist(Message mess) {
+		
+		int finalIdx = 0;
+		
+		if (!queue.isEmpty()) {
+			for(Message m : queue) {
+				if (m.equalsLite(mess)) {
+					finalIdx++;
+				}
+				else {
+					break;
+				}
+			}
+		}
+		
+		return queue.subList(0, finalIdx);
+		
 	}
 }
