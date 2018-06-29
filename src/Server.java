@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -14,31 +13,45 @@ public class Server {
 	
 	public int SERVERS_PORT = 8501;
 	public int CLIENTS_PORT = 8502;
-	public int DELIVERY_PORT = 8503;
 	
 	private final Object lock = new Object();
-	private int clock = 0;
+	private int lamport_clock = 0;
+	private int local_clock = 0;
 	private int clientID = 0;
 	
-	public DatagramSocket confirmation;
+	private Queue queue;
+	
 	public Hashtable<Integer, ObjectOutputStream> usersTable;
 	public Set<String> otherServers;
 	
 	public Server() throws IOException {
 		connectionsReceiver = new ServerSocket(CLIENTS_PORT);
-		confirmation = new DatagramSocket(DELIVERY_PORT);
 		usersTable = new Hashtable<>();
 		otherServers = new HashSet<>();
+		this.queue = new Queue("messaggi");
 		
-		new Receiver(SERVERS_PORT, usersTable, otherServers).start();
+		new Receiver(SERVERS_PORT, usersTable, otherServers, queue).start();
 	}
 	
-	public int getClock() {
+	public Queue getQueue() {
+		return this.queue;
+	}
+
+	
+	public int getLamportClock() {
 		synchronized (lock) {
-			clock++;
+			lamport_clock++;
 		}
 		
-		return clock;
+		return lamport_clock;
+	}
+	
+	public int getLocalClock() {
+		synchronized (lock) {
+			local_clock++;
+		}
+		
+		return local_clock;
 	}
 	
 	public int getClientID() {
@@ -49,24 +62,23 @@ public class Server {
 		return clientID;
 	}
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		
 		Server server = new Server();
-		Socket client;
+		Socket client_connection;
 		int clientID;
 		ObjectOutputStream out;
 		
 		System.out.println("Server avviato a " + InetAddress.getLocalHost().getHostAddress() + "...");
 		
 		while (true) {
-        	client = server.connectionsReceiver.accept();
+			client_connection = server.connectionsReceiver.accept();
         	clientID = server.getClientID();
-        	out = new ObjectOutputStream(client.getOutputStream());
+        	out = new ObjectOutputStream(client_connection.getOutputStream());
         	
         	server.usersTable.put(clientID, out);
         	
-    	    new Handler(server, client, clientID, out).start();
+    	    new Handler(server, client_connection, clientID, out).start();
        }
 	}
-
 }

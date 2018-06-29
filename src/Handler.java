@@ -1,53 +1,65 @@
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.DatagramSocket;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 
 public class Handler extends Thread{
 
 	@SuppressWarnings("unused")
-	private Socket client;
+	private Socket client_connection;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 	
 	private Server server;
 	private int clientID;
 	
+	private InetAddress group;
+	private MulticastSocket multicast;
 	private int SERVERS_PORT;
 	public String IP;
 	
-	private SharedContent queue;
+	private Queue queue;
 	
 	public int DELIVERY_PORT;
-	public DatagramSocket confirmation;
 	
-	public Handler(Server server, Socket client, int clientID, ObjectOutputStream out) throws IOException {
-		this.client = client;
+	public Handler(Server server, Socket client_connection, int clientID, ObjectOutputStream out) throws IOException {
+		this.client_connection = client_connection;
 		this.server = server;
 		this.clientID = clientID;
 		
 		SERVERS_PORT = server.SERVERS_PORT;
-		DELIVERY_PORT = server.DELIVERY_PORT;
 		
-		in = new ObjectInputStream(client.getInputStream());
+		in = new ObjectInputStream(client_connection.getInputStream());
 		this.out = out;
 		
-		queue = new SharedContent(new ArrayList<>());
-		confirmation = server.confirmation;
+		this.queue = server.getQueue();
 		
 		IP = InetAddress.getLocalHost().getHostAddress();
+		
+		group = InetAddress.getByName("224.0.5.1");
+		multicast = new MulticastSocket(SERVERS_PORT);
+		multicast.joinGroup(group);		
+	}
+	
+	public void sendMulticast(Message msg) throws IOException, InterruptedException {
+		
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
+		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		oos.writeObject(msg);
+		byte[] data = baos.toByteArray();
+		
+		DatagramPacket packet = new DatagramPacket(data, data.length, group, SERVERS_PORT);
+		
+		multicast.send(packet);
 	}
 	
 	public void run() {
 		
-		Thread unchoker = new Unchoker(queue, SERVERS_PORT);
-		unchoker.start();
-		
 		Message msg;
-		boolean first = true;
 		
 		while(true) {
 			try {
@@ -60,31 +72,30 @@ public class Handler extends Thread{
 		           	break;
 	           }
 	           else {
-	        	   // assegno scalar clock solo alle write, le read sono eseguite in locale istantaneamente
-	        	   if (msg.type.equals("write")) {
-	        		   msg.clock = server.getClock();
-	        	   }
+	        	   
+	        	   // assegno il lamport clock
+	        	   msg.lamport_clock = server.getLamportClock();
+	        	   
+	        	   // assegno il local clock
+	        	   msg.local_clock = server.getLocalClock();
+	        	   
+	        	   // assegno IP server sorgente e clientID
 		           msg.source = IP;
+		           msg.sender = IP;
 		           msg.clientID = clientID;
 		           
-		           if (!first)
-		        	   msg.hasPrevious = true;
-		           else {
-		        	   msg.hasPrevious = false;
-		        	   first = false;
-		           }
+		           // imposto che non è un ack e che di default non è valido (non può essere eseguito dunque)
+		           msg.isAck = false;
+		           msg.valid = false;
 		           
-		           queue.getQueue().add(msg);
-		           new DeliveryService(queue, msg, SERVERS_PORT, confirmation).start();
+		           queue.add(msg);
 		           
-		           System.out.println("\nMessaggio del client inoltrato al receiver");
+		           sendMulticast(msg);
 	           }
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (ClassNotFoundException | IOException | InterruptedException e) {
 				;
 			}
 		}
-		
-		unchoker.interrupt();
 	}
 	
 }

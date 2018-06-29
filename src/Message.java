@@ -5,9 +5,11 @@ public class Message implements Serializable{
 	private static final long serialVersionUID = 1L;
 	
 	public String type;
-	public int clock;
+	public int lamport_clock;
+	public int local_clock;
 	public String source;
-	public String ackSource;
+	public String sender;
+	
 	public int id;
 	public int value;
 	public int clientID;
@@ -16,7 +18,7 @@ public class Message implements Serializable{
 	public long cycle;
 	public boolean requestedAck;
 	public boolean hasPrevious;
-	public boolean executable;
+	public boolean valid;
 	
 	public Message(String type) {
 		this.type = type;
@@ -35,11 +37,12 @@ public class Message implements Serializable{
 	
 	public Message(Message m) {
 		this.type = m.type;
-		this.clock = m.clock;
+		this.lamport_clock = m.lamport_clock;
+		this.local_clock = m.local_clock;
 		if(m.source != null)
 			this.source = new String(m.source);
-		if(m.ackSource != null)
-			this.ackSource = new String(m.ackSource);
+		if(m.sender != null)
+			this.sender = new String(m.sender);
 		this.id = m.id;
 		this.value = m.value;
 		this.clientID = m.clientID;
@@ -48,46 +51,12 @@ public class Message implements Serializable{
 		this.cycle = m.cycle;
 		this.requestedAck = m.requestedAck;
 		this.hasPrevious = m.hasPrevious;
-		this.executable = m.executable;
+		this.valid = m.valid;
 	}
 	
 	public boolean equals(Message m) {
-		
-		if (this.type.equals(m.type) && this.clock == m.clock && this.source.equals(m.source) && 
-				this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
-	
-	public boolean equals(Message m, String mode) {
-		
-		if (this.type.equals(m.type) && this.clock == m.clock && this.source.equals(m.source) && 
-				this.ackSource.equals(m.ackSource) && this.id == m.id && this.value == m.value && 
-					this.clientID == m.clientID) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
-	
-	public boolean equalsLite(Message m) {
-		
-		if (this.clock == m.clock && this.source.equals(m.source) && 
-				this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
-	
-	// serve per controllare se esiste un messaggio precedente a quello fornito come parametro
-	public boolean equalsPrevious(Message m) {
-		if (this.clock == (m.clock - 1) && this.source.equals(m.source)) {
+		if (this.type.equals(m.type) && this.lamport_clock == m.lamport_clock && this.local_clock == m.local_clock && this.source.equals(m.source) && 
+				this.sender.equals(m.sender) && this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
 			return true;
 		}
 		else {
@@ -96,7 +65,7 @@ public class Message implements Serializable{
 	}
 	
 	public void print() {
-		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Clock: " + clock + ". Ack source: "  + 
-				ackSource + ". Is ack: " + isAck + ". Is retransmission: " + isRetransmit + ". Is executable: " + executable);
+		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Lamport clock: " + lamport_clock + 
+				". Local clock: " + lamport_clock + ". Ack source: " + sender + ". Is ack: " + isAck + ". Is valid: " + valid);
 	}
 }
