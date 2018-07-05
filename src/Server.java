@@ -23,14 +23,16 @@ public class Server {
 	
 	public Hashtable<Integer, ObjectOutputStream> usersTable;
 	public Set<String> otherServers;
+	public Hashtable<String, Integer> progressTable;
 	
 	public Server() throws IOException {
 		connectionsReceiver = new ServerSocket(CLIENTS_PORT);
 		usersTable = new Hashtable<>();
 		otherServers = new HashSet<>();
 		this.queue = new Queue("messaggi");
+		progressTable = new Hashtable<>();
 		
-		new Receiver(SERVERS_PORT, usersTable, otherServers, queue).start();
+		new Receiver(SERVERS_PORT, usersTable, otherServers, queue, this, progressTable).start();
 	}
 	
 	public Queue getQueue() {
@@ -78,7 +80,7 @@ public class Server {
         	
         	server.usersTable.put(clientID, out);
         	
-    	    new Handler(server, client_connection, clientID, out).start();
+    	    new Handler(server, client_connection, clientID, out, server.progressTable).start();
        }
 	}
 }

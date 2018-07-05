@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
+import java.util.Hashtable;
 
 public class Handler extends Thread{
 
@@ -23,10 +24,12 @@ public class Handler extends Thread{
 	public String IP;
 	
 	private Queue queue;
+	private Hashtable<String, Integer> progressTable;
 	
 	public int DELIVERY_PORT;
 	
-	public Handler(Server server, Socket client_connection, int clientID, ObjectOutputStream out) throws IOException {
+	public Handler(Server server, Socket client_connection, int clientID, ObjectOutputStream out, 
+			Hashtable<String, Integer> progressTable) throws IOException {
 		this.client_connection = client_connection;
 		this.server = server;
 		this.clientID = clientID;
@@ -34,9 +37,9 @@ public class Handler extends Thread{
 		SERVERS_PORT = server.SERVERS_PORT;
 		
 		in = new ObjectInputStream(client_connection.getInputStream());
-		this.out = out;
 		
 		this.queue = server.getQueue();
+		this.progressTable = progressTable;
 		
 		IP = InetAddress.getLocalHost().getHostAddress();
 		
@@ -87,6 +90,9 @@ public class Handler extends Thread{
 		           // imposto che non è un ack e che di default non è valido (non può essere eseguito dunque)
 		           msg.isAck = false;
 		           msg.valid = false;
+		           
+		           // aggiorno la progress table
+		           progressTable.put(IP, msg.local_clock);
 		           
 		           queue.add(msg);
 		           

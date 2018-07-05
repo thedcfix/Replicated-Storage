@@ -60,8 +60,38 @@ public class Queue {
 		}
 	}
 	
-	public void remove(Message mess) {
-		queue.removeAll(extractSublist(mess));
+public List<Message> extractSublist(Message mess) {
+		
+		int finalIdx = 0;
+		
+		if (!queue.isEmpty()) {
+			for(Message m : queue) {
+				if (m.equalsLite(mess)) {
+					finalIdx++;
+				}
+				else {
+					break;
+				}
+			}
+		}
+		
+		return queue.subList(0, finalIdx);
+		
+	}
+	
+	public void removeExecuted(Message mess) {
+		
+		synchronized (lock) {
+			List<Message> toRemove = new ArrayList<>();
+			
+			for (Message m : queue) {
+				if (m.equalsLite(mess)) {
+					toRemove.add(m);
+				}
+			}
+			
+			queue.removeAll(toRemove);
+		}
 	}
 	
 	public boolean isEmpty() {
@@ -101,22 +131,5 @@ public class Queue {
 		}
 	}
 	
-	public List<Message> extractSublist(Message mess) {
-		
-		int finalIdx = 0;
-		
-		if (!queue.isEmpty()) {
-			for(Message m : queue) {
-				if (m.equalsLite(mess)) {
-					finalIdx++;
-				}
-				else {
-					break;
-				}
-			}
-		}
-		
-		return queue.subList(0, finalIdx);
-		
-	}
+	
 }

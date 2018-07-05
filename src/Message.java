@@ -77,6 +77,6 @@ public class Message implements Serializable{
 	
 	public void print() {
 		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Lamport clock: " + lamport_clock + 
-				". Local clock: " + lamport_clock + ". Ack source: " + sender + ". Is ack: " + isAck + ". Is valid: " + valid);
+				". Local clock: " + local_clock + ". Ack source: " + sender + ". Is ack: " + isAck + ". Is valid: " + valid);
 	}
 }

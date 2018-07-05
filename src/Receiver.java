@@ -9,6 +9,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
@@ -32,21 +33,28 @@ public class Receiver extends Thread {
 	public SharedContent valid;
 	public SharedContent db;
 	
-	public int DELIVERY_PORT = 8503;
+	private Server server;
+	Hashtable<String, Integer> progressTable;
 
-	public Receiver(int port, Hashtable<Integer, ObjectOutputStream> users, Set<String> otherServers, Queue queue) throws IOException {
+	public Receiver(int port, Hashtable<Integer, ObjectOutputStream> users, Set<String> otherServers, Queue queue, Server server, 
+			Hashtable<String, Integer> progressTable) throws IOException {
 		
 		SERVERS_PORT = port;
 		usersTable = users;
-		servers = otherServers;
 		
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SERVERS_PORT);
 		multicast.joinGroup(group);		
 		IP = InetAddress.getLocalHost().getHostAddress();
 		
+		//servers = otherServers; -----------------------------------------------
+		servers = new HashSet<>();
+		servers.add(IP);
+		
 		this.queue = queue;
 		this.ack = new Queue("ack");
+		
+		this.server = server;
 		
 		ackList = new ArrayList<>();
 		storage = new Hashtable<>();
@@ -54,9 +62,11 @@ public class Receiver extends Thread {
 		valid = new SharedContent(false);
 		db = new SharedContent(storage);
 		
-		new AlivenessSender().start();
-		new AlivenessChecker(SERVERS_PORT, servers, valid).start();
+		//new AlivenessSender().start();
+		//new AlivenessChecker(SERVERS_PORT, servers, valid).start();
 		new StorageUpdater(db).start();
+		
+		progressTable = new Hashtable<>();
 	}
 	
 	// ricevo i messaggi inviati sulla SERVERS_PORT
@@ -86,13 +96,29 @@ public class Receiver extends Thread {
 	}
 	
 	// verifico se un messaggio ha tutti gli ack
-	public boolean isFullyAcknowledged(Message msg, Queue ack) {
+	public boolean isFullyAcknowledged(Message msg, Queue ack) throws InterruptedException {
 		
 		if (msg == null)
 			return false;
 		
-		if (ack.extractSublist(msg).size() >= servers.size())
+		int size = this.servers.size();
+
+		List<Message> ackMsgs = ack.extractSublist(msg);
+		boolean flag = true;
+		
+		// vedo se tutti gli ack sono messaggi validi
+		for (Message m : ackMsgs) {
+			if (m.valid == false) {
+				flag = false;
+				break;
+			}
+		}
+		
+		// eseguo solo se ho tutti gli ack e se tutti gli ack sono validi
+		if (ackMsgs.size() >= size && flag == true) {
+			System.out.println("Servers size: " + size + " flag = " + flag + " EXECUTION ALLOWED");
 			return true;
+		}
 		else
 			return false;
 	}
@@ -101,7 +127,7 @@ public class Receiver extends Thread {
 		
 		byte[] buff = new byte[8192];
 		String sender;
-		int lastClock;
+		int expectedClock;
 		Hashtable<String, Integer> knownServers = new Hashtable<>();
 		
 		// lista contenente tutti i messaggi eseguiti
@@ -113,29 +139,36 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
+				
 				if (!mess.type.equals("unlock")) {
-					
 					// estraggo il mittente del messaggio
 					sender = mess.sender;
 					
-					// se il mittente non è conosciuto, lo inizializzo. Imposto il suo ultimo local clock a 0, così facendo mi aspetto che
-					// il prossimo sia il suo primo messaggio con local clock 1
+					// se il mittente non è conosciuto, lo inizializzo. Imposto il suo ultimo local clock a 1, così facendo mi aspetto che
+					// il prossimo sia il suo primo messaggio con local clock 1, il primo
 					if (knownServers.containsKey(sender) == false) {
-						knownServers.put(sender, 0);
-						lastClock = 0;
+						knownServers.put(sender, 1);
+						expectedClock = 1;
 					}
 					else {
-						lastClock = knownServers.get(sender);
+						expectedClock = knownServers.get(sender);
 					}
 					
 					// marco il messaggio come valido o non valido
-					if (mess.local_clock == lastClock + 1)
+					if (mess.local_clock == expectedClock) {
 						mess.valid = true;
+						
+						// sovrascrivo il clock che mi aspetto successivamente da quel client
+						knownServers.put(sender, expectedClock + 1);
+					}
 					else
 						mess.valid = false;
 					
 					// ora controllo se è un ack o un messaggio
 					if(mess.isAck == false) {
+						
+						System.out.println("--- Ricevuto messaggio ---");
+						
 						// se non è già presente lo aggiungo (poi pulisco nel caso sia già stato processato in passato)
 						if(!queue.isAlreadyPresent(mess)) {
 							queue.add(mess);
@@ -157,24 +190,29 @@ public class Receiver extends Thread {
 						ackMsg.isAck = true;
 						ackMsg.sender = IP;
 						ackMsg.valid = false;
+						ackMsg.local_clock = server.getLocalClock();
 						
 						// invio il mio messaggio di ack
 						if (!mess.type.equals("read")) {
 							sendMulticast(ackMsg);
 						}
+						
+						System.out.println("--- Inviato multicast ---");
 					}
 					else {
 						// se non è già presente lo aggiungo
 						if (!ack.isAlreadyPresent(mess)) {
 							
 							// marco il messaggio come valido o non valido
-							if (mess.local_clock == lastClock + 1)
+							if (mess.local_clock == expectedClock)
 								mess.valid = true;
 							else
 								mess.valid = false;
 							
 							// aggiungo l'ack alla lista delgi ack ricevuti
 							ack.add(mess);
+							
+							System.out.println("--- Ricevuto ack ---");
 						}
 					}
 					
@@ -186,13 +224,20 @@ public class Receiver extends Thread {
 					
 					if (isFullyAcknowledged(queue.getFirst(), ack)) {
 						Message toExecute = queue.removeFirst();
-						ack.remove(toExecute);
+						ack.removeExecuted(toExecute);
 						storage.put(toExecute.id, toExecute.value);
 						
 						
 						
 						System.out.println("Messaggio eseguito: " + storage.toString());
 					}
+					
+					/*
+					 * 
+					 * controllare come rendere validi gli ack dopo che arriva il messaggio precedente, ossia quello che li rende validi
+					 * non erano validi perchè mancava un messaggio
+					 * 
+					 */
 					
 					
 					// separatore iterazioni
