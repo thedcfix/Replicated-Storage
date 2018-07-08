@@ -154,7 +154,7 @@ public class Receiver extends Thread {
 				}
 				
 				
-				if (!mess.type.equals("unlock")) {
+				if (!mess.type.equals("unlock") && !mess.isRetransmit) {
 					// estraggo il mittente del messaggio
 					sender = mess.sender;
 					
