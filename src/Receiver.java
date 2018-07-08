@@ -156,8 +156,8 @@ public class Receiver extends Thread {
 					// se il mittente non è conosciuto, lo inizializzo. Imposto il suo ultimo local clock a 1, così facendo mi aspetto che
 					// il prossimo sia il suo primo messaggio con local clock 1, il primo
 					if (knownServers.containsKey(sender) == false) {
-						knownServers.put(sender, mess.lamport_clock);
-						expectedClock = mess.lamport_clock;
+						knownServers.put(sender, mess.local_clock);
+						expectedClock = mess.local_clock;
 					}
 					else {
 						expectedClock = knownServers.get(sender);
