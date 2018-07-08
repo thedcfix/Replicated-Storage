@@ -63,7 +63,7 @@ public class Receiver extends Thread {
 		valid = new SharedContent(false);
 		db = new SharedContent(storage);
 		
-		//new AlivenessSender().start();
+		new AlivenessSender().start();
 		//new AlivenessChecker(SERVERS_PORT, servers, valid).start();
 		new StorageUpdater(db).start();
 		
@@ -130,6 +130,7 @@ public class Receiver extends Thread {
 		String sender;
 		int expectedClock;
 		Hashtable<String, Integer> knownServers = new Hashtable<>();
+		Hashtable<Integer, Message> sentAcks = new Hashtable<>();
 		
 		// lista contenente tutti i messaggi eseguiti
 		List<Message> executionList = new ArrayList<>();
@@ -141,7 +142,11 @@ public class Receiver extends Thread {
 				Message mess = receiveMessage(buff);
 				
 				if (mess.isRetransmit == true) {
-					// gestione ritrasmisisone
+					// gestione ritrasmisisone. Uso il campo id per la trasmissione dell'hash del messaggio da rimandare
+					Message toSend = sentAcks.get(mess.id);
+					sendMulticast(toSend);
+					
+					System.out.println("Ricevuta richiesta di ritrasmissione del messaggio: ");toSend.print();
 				}
 				else {
 					// imposto il lamport clock
@@ -208,6 +213,9 @@ public class Receiver extends Thread {
 						ackMsg.lamport_clock = server.getLamportClock();
 						ackMsg.local_clock = server.getLocalClock();
 						
+						// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
+						sentAcks.put(ackMsg.getLightVersionHash(), ackMsg);
+						
 						// invio il mio messaggio di ack
 						if (!mess.type.equals("read")) {
 							sendMulticast(ackMsg);
@@ -216,6 +224,13 @@ public class Receiver extends Thread {
 						System.out.println("--- Inviato multicast ---");
 					}
 					else {
+						
+						/*
+						 * 
+						 * controllare: se arriva l'ack ma il messaggio relativo non c'è, non lo considero
+						 * 
+						 */
+						
 						// se non è già presente lo aggiungo
 						if (!ack.isAlreadyPresent(mess)) {
 							
@@ -266,6 +281,13 @@ public class Receiver extends Thread {
 					queue.tick();
 					
 					// controllo se c'è da ritrasmettere qualcosa e la ritrasmetto
+					int request = queue.checkRetransmit();
+					
+					if (request != -1) {
+						// se c'è effettivamente un messaggio in stallo, chiedo la ritrasmissione degli ack
+						Message mex = new Message("retransmit", request);
+						sendMulticast(mex);
+					}
 				}
 				
 			}

@@ -8,7 +8,7 @@ import java.net.MulticastSocket;
 public class AlivenessSender extends Thread {
 	
 	private int WINDOW = 2;
-	private int SYNC_PORT = 8504;
+	private int SYNC_PORT = 8501;//8504;
 	
 	private InetAddress group;
 	private MulticastSocket multicast;
@@ -39,7 +39,7 @@ public class AlivenessSender extends Thread {
 	public void run() {
 		while(true) {
 			try {
-				sendMulticast(new Message("sync"));
+				sendMulticast(new Message("unlock"));
 				Thread.sleep(WINDOW * 1000);
 			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();

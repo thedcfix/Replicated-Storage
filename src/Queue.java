@@ -60,7 +60,7 @@ public class Queue {
 		}
 	}
 	
-public List<Message> extractSublist(Message mess) {
+	public List<Message> extractSublist(Message mess) {
 		
 		int finalIdx = 0;
 		
@@ -133,5 +133,16 @@ public List<Message> extractSublist(Message mess) {
 	
 	public void tick() {
 		this.cycle++;
+	}
+	
+	// se un messaggio è in coda da più di 2 cicli chiedo la ritrasmissione
+	public int checkRetransmit() {
+		
+		Message mes = getFirst();
+		
+		if (mes.cycle >= this.cycle + 2)
+			return mes.getLightVersionHash();
+		else
+			return -1;
 	}
 }
