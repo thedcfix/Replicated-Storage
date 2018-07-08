@@ -159,6 +159,12 @@ public class Receiver extends Thread {
 						knownServers.put(sender, mess.local_clock);
 						expectedClock = mess.local_clock;
 					}
+					else if(knownServers.containsKey(sender) == true && knownServers.get(sender) > 1 && mess.local_clock == 1) {
+						// in questo caso un server era attivo, aveva un local clock positivo e poi è morto. Quando torna attivo
+						// il suo local clock sarà 1. Se leggo uno capisco che è tornato attivo e resetto il suo contatore
+						knownServers.put(sender, mess.local_clock);
+						expectedClock = mess.local_clock;
+					}
 					else {
 						expectedClock = knownServers.get(sender);
 					}
