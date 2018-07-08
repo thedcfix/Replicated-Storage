@@ -141,8 +141,10 @@ public class Queue {
 		if (!isEmpty()) {
 			Message mes = getFirst();
 			
-			if (this.cycle >= mes.cycle + 2)
+			if (this.cycle >= mes.cycle + 2) {
+				mes.cycle = this.cycle;
 				return mes.getLightVersionHash();
+			}
 			else
 				return -1;
 			}
