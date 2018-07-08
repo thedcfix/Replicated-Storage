@@ -48,6 +48,18 @@ public class Server {
 		return lamport_clock;
 	}
 	
+	public int queryLamportClock() {
+		synchronized (lock) {
+			return lamport_clock;
+		}
+	}
+	
+	public void setLamportClock(int n) {
+		synchronized (lock) {
+			lamport_clock = n;
+		}
+	}
+	
 	public int getLocalClock() {
 		synchronized (lock) {
 			local_clock++;

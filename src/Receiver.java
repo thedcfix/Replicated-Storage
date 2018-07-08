@@ -49,7 +49,8 @@ public class Receiver extends Thread {
 		
 		//servers = otherServers; -----------------------------------------------
 		servers = new HashSet<>();
-		servers.add(IP);
+		servers.add("192.168.1.176");
+		servers.add("192.168.1.222");
 		
 		this.queue = queue;
 		this.ack = new Queue("ack");
@@ -139,6 +140,14 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
+				if (mess.isRetransmit == true) {
+					// gestione ritrasmisisone
+				}
+				else {
+					// imposto il lamport clock
+					server.setLamportClock(Math.max(mess.lamport_clock, server.queryLamportClock()));
+				}
+				
 				
 				if (!mess.type.equals("unlock")) {
 					// estraggo il mittente del messaggio
@@ -190,6 +199,7 @@ public class Receiver extends Thread {
 						ackMsg.isAck = true;
 						ackMsg.sender = IP;
 						ackMsg.valid = false;
+						ackMsg.lamport_clock = server.getLamportClock();
 						ackMsg.local_clock = server.getLocalClock();
 						
 						// invio il mio messaggio di ack
@@ -242,6 +252,14 @@ public class Receiver extends Thread {
 					
 					// separatore iterazioni
 					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+				}
+				else {
+					// ho ricevuto un messaggio di unlock
+					
+					// incremento il contatore dei cicli di permanenza in coda
+					queue.tick();
+					
+					// controllo se c'è da ritrasmettere qualcosa e la ritrasmetto
 				}
 				
 			}

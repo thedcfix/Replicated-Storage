@@ -66,7 +66,7 @@ public List<Message> extractSublist(Message mess) {
 		
 		if (!queue.isEmpty()) {
 			for(Message m : queue) {
-				if (m.equalsLite(mess)) {
+				if (m.equalsUltraLite(mess)) {
 					finalIdx++;
 				}
 				else {
@@ -85,7 +85,7 @@ public List<Message> extractSublist(Message mess) {
 			List<Message> toRemove = new ArrayList<>();
 			
 			for (Message m : queue) {
-				if (m.equalsLite(mess)) {
+				if (m.equalsUltraLite(mess)) {
 					toRemove.add(m);
 				}
 			}
@@ -131,5 +131,7 @@ public List<Message> extractSublist(Message mess) {
 		}
 	}
 	
-	
+	public void tick() {
+		this.cycle++;
+	}
 }

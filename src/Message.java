@@ -16,8 +16,6 @@ public class Message implements Serializable{
 	public boolean isAck;
 	public boolean isRetransmit;
 	public long cycle;
-	public boolean requestedAck;
-	public boolean hasPrevious;
 	public boolean valid;
 	
 	public Message(String type) {
@@ -49,8 +47,6 @@ public class Message implements Serializable{
 		this.isAck = m.isAck;
 		this.isRetransmit = m.isRetransmit;
 		this.cycle = m.cycle;
-		this.requestedAck = m.requestedAck;
-		this.hasPrevious = m.hasPrevious;
 		this.valid = m.valid;
 	}
 	
@@ -75,8 +71,32 @@ public class Message implements Serializable{
 		}
 	}
 	
+	public boolean equalsUltraLite(Message m) {
+		
+		if (this.source.equals(m.source) && this.id == m.id && this.value == m.value && this.clientID == m.clientID) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
 	public void print() {
 		System.out.println("Messaggio: " + type + " " + id + " " + value + " da " + source + ". Lamport clock: " + lamport_clock + 
 				". Local clock: " + local_clock + ". Ack source: " + sender + ". Is ack: " + isAck + ". Is valid: " + valid);
+	}
+	
+	public int getLightVersionHash() {
+		Message clone = new Message(this);
+		
+		clone.lamport_clock = 0;
+		clone.local_clock = 0;
+		clone.sender = "";
+		clone.isAck = false;
+		clone.isRetransmit = false;
+		clone.cycle = 0;
+		clone.valid = false;
+		
+		return clone.hashCode();
 	}
 }
