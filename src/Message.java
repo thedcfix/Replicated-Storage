@@ -1,4 +1,5 @@
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Message implements Serializable{
 	
@@ -98,5 +99,10 @@ public class Message implements Serializable{
 		clone.valid = false;
 		
 		return clone.hashCode();
+	}
+	
+	@Override
+	public int hashCode(){
+	    return Objects.hash(type, local_clock, source, id, value, clientID);
 	}
 }
