@@ -141,8 +141,7 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
-				if (mess.isRetransmit == true) {
-					System.out.println(sentAcks.toString());
+				if (mess.isRetransmit == true && !mess.source.equals(IP)) {
 					// gestione ritrasmisisone. Uso il campo id per la trasmissione dell'hash del messaggio da rimandare
 					Message toSend = sentAcks.get(mess.id);
 					sendMulticast(toSend);
@@ -216,7 +215,6 @@ public class Receiver extends Thread {
 						
 						// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
 						sentAcks.put(ackMsg.getLightVersionHash(), ackMsg);
-						System.out.println("Metto messaggio: " + ackMsg.getLightVersionHash());
 						
 						// invio il mio messaggio di ack
 						if (!mess.type.equals("read")) {
@@ -288,6 +286,7 @@ public class Receiver extends Thread {
 					if (request != -1) {
 						// se c'è effettivamente un messaggio in stallo, chiedo la ritrasmissione degli ack
 						Message mex = new Message("retransmit", request);
+						mex.source = IP;
 						mex.isRetransmit = true;
 						sendMulticast(mex);
 					}
