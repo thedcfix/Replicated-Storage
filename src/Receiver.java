@@ -50,7 +50,7 @@ public class Receiver extends Thread {
 		//servers = otherServers; -----------------------------------------------
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
-		servers.add("192.168.1.222");
+		//servers.add("192.168.1.222");
 		
 		this.queue = queue;
 		this.ack = new Queue("ack");
@@ -130,10 +130,9 @@ public class Receiver extends Thread {
 		String sender;
 		int expectedClock;
 		Hashtable<String, Integer> knownServers = new Hashtable<>();
-		Hashtable<Integer, Message> sentAcks = new Hashtable<>();
 		
-		// lista contenente tutti i messaggi eseguiti
-		List<Message> executionList = new ArrayList<>();
+		Hashtable<Integer, Message> messages = new Hashtable<>();
+		Hashtable<Integer, Message> acks = new Hashtable<>();
 		
 		while(true) {
 			
@@ -141,35 +140,41 @@ public class Receiver extends Thread {
 				// ricevo il messaggio
 				Message mess = receiveMessage(buff);
 				
+				// *************************************************************************************************************************
+				
 				if (mess.isRetransmit == true && !mess.source.equals(IP)) {
 					// gestione ritrasmisisone. Uso il campo id per la trasmissione dell'hash del messaggio da rimandare
-					Message toSend = sentAcks.get(mess.id);
-					sendMulticast(toSend);
+					// invio sia il messaggio sia l'ack
+					Message toSendM = messages.get(mess.id);
+					Message toSendA = acks.get(mess.id);
+					sendMulticast(toSendM);
+					sendMulticast(toSendA);
 					
-					System.out.println("Ricevuta richiesta di ritrasmissione del messaggio: ");toSend.print();
-				}
-				else {
-					// imposto il lamport clock
-					server.setLamportClock(Math.max(mess.lamport_clock, server.queryLamportClock()));
+					System.out.println("Ricevuta richiesta di ritrasmissione del messaggio: ");toSendM.print();
 				}
 				
+				// *************************************************************************************************************************
 				
 				if (!mess.type.equals("unlock") && !mess.isRetransmit) {
+					
+					// aggiorno il lamport clock
+					server.setLamportClock(Math.max(mess.lamport_clock, server.queryLamportClock()) + 1);
+					
 					// estraggo il mittente del messaggio
 					sender = mess.sender;
 					
 					// se il mittente non è conosciuto, lo inizializzo. Imposto il suo ultimo local clock a 1, così facendo mi aspetto che
 					// il prossimo sia il suo primo messaggio con local clock 1, il primo
 					if (knownServers.containsKey(sender) == false) {
-						knownServers.put(sender, mess.local_clock);
-						expectedClock = mess.local_clock;
+						knownServers.put(sender, 1);
+						expectedClock = 1;
 					}
-					else if(knownServers.containsKey(sender) == true && knownServers.get(sender) > 1 && mess.local_clock == 1) {
+					/*else if(knownServers.containsKey(sender) == true && knownServers.get(sender) > 1 && mess.local_clock == 1) {
 						// in questo caso un server era attivo, aveva un local clock positivo e poi è morto. Quando torna attivo
 						// il suo local clock sarà 1. Se leggo uno capisco che è tornato attivo e resetto il suo contatore
 						knownServers.put(sender, mess.local_clock);
 						expectedClock = mess.local_clock;
-					}
+					}*/
 					else {
 						expectedClock = knownServers.get(sender);
 					}
@@ -184,68 +189,76 @@ public class Receiver extends Thread {
 					else
 						mess.valid = false;
 					
-					// ora controllo se è un ack o un messaggio
-					if(mess.isAck == false) {
+					// se è valido lo processo, altrimenti non lo considero
+					if (mess.valid) {
 						
-						System.out.println("--- Ricevuto messaggio ---");
-						
-						// se non è già presente lo aggiungo (poi pulisco nel caso sia già stato processato in passato)
-						if(!queue.isAlreadyPresent(mess)) {
-							queue.add(mess);
+						// ora controllo se è un ack o un messaggio
+						if(mess.isAck == false) {
+							
+							System.out.println("--- Ricevuto messaggio ---");
+							
+							// lo aggiungo all'elenco dei messaggi ricevuti
+							messages.put(mess.getLightVersionHash(), mess);
+							
+							// se non è già presente ed è valido lo aggiungo (poi pulisco nel caso sia già stato processato in passato)
+							if(!queue.isAlreadyPresent(mess)) {
+								queue.add(mess);
+							}
+							else if (mess.valid){
+								// se il messaggio è valido e ne ho una copia in coda che non lo è, la rendo valida
+								queue.makeValid(mess);
+							}
+							
+							/*
+							 * 
+							 * Inserire la parte di risposta alle read
+							 * 
+							 */
+							
+							// rispondo col mio ack
+							Message ackMsg = new Message(mess);
+							
+							ackMsg.isAck = true;
+							ackMsg.sender = IP;
+							ackMsg.valid = false;
+							ackMsg.lamport_clock = server.getLamportClock();
+							ackMsg.local_clock = server.getLocalClock();
+							
+							// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
+							acks.put(ackMsg.getLightVersionHash(), ackMsg);
+							
+							// invio il mio messaggio di ack
+							if (!mess.type.equals("read")) {
+								sendMulticast(ackMsg);
+							}
+							
+							System.out.println("--- Inviato multicast ---");
 						}
-						else if (mess.valid){
-							// se il messaggio è valido e ne ho una copia in coda che non lo è, la rendo valida
-							queue.makeValid(mess);
+						else {
+							
+							// l'ack è valido solo se c'è un messaggio a cui è riferito, altrimenti non lo considero
+							boolean res = messages.containsKey(mess.getLightVersionHash());
+							
+							if (res == true) {
+								// se non è già presente lo aggiungo
+								if (!ack.isAlreadyPresent(mess)) {
+									
+									// marco il messaggio come valido o non valido
+									if (mess.local_clock == expectedClock)
+										mess.valid = true;
+									else
+										mess.valid = false;
+									
+									// aggiungo l'ack alla lista delgi ack ricevuti
+									ack.add(mess);
+									
+									System.out.println("--- Ricevuto ack ---");
+								}
+							}
 						}
-						
-						/*
-						 * 
-						 * Inserire la parte di risposta alle read
-						 * 
-						 */
-						
-						// rispondo col mio ack
-						Message ackMsg = new Message(mess);
-						
-						ackMsg.isAck = true;
-						ackMsg.sender = IP;
-						ackMsg.valid = false;
-						ackMsg.lamport_clock = server.getLamportClock();
-						ackMsg.local_clock = server.getLocalClock();
-						
-						// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
-						sentAcks.put(ackMsg.getLightVersionHash(), ackMsg);
-						
-						// invio il mio messaggio di ack
-						if (!mess.type.equals("read")) {
-							sendMulticast(ackMsg);
-						}
-						
-						System.out.println("--- Inviato multicast ---");
 					}
-					else {
-						
-						/*
-						 * 
-						 * controllare: se arriva l'ack ma il messaggio relativo non c'è, non lo considero
-						 * 
-						 */
-						
-						// se non è già presente lo aggiungo
-						if (!ack.isAlreadyPresent(mess)) {
-							
-							// marco il messaggio come valido o non valido
-							if (mess.local_clock == expectedClock)
-								mess.valid = true;
-							else
-								mess.valid = false;
-							
-							// aggiungo l'ack alla lista delgi ack ricevuti
-							ack.add(mess);
-							
-							System.out.println("--- Ricevuto ack ---");
-						}
-					}
+					
+					
 					
 					queue.print();
 					ack.print();
@@ -262,13 +275,6 @@ public class Receiver extends Thread {
 						
 						System.out.println("Messaggio eseguito: " + storage.toString());
 					}
-					
-					/*
-					 * 
-					 * controllare come rendere validi gli ack dopo che arriva il messaggio precedente, ossia quello che li rende validi
-					 * non erano validi perchè mancava un messaggio
-					 * 
-					 */
 					
 					
 					// separatore iterazioni
