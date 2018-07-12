@@ -37,6 +37,7 @@ public class Handler extends Thread{
 		SERVERS_PORT = server.SERVERS_PORT;
 		
 		in = new ObjectInputStream(client_connection.getInputStream());
+		this.out = out;
 		
 		this.queue = server.getQueue();
 		this.progressTable = progressTable;

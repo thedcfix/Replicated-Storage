@@ -4,11 +4,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
@@ -20,18 +17,15 @@ public class Receiver extends Thread {
 	private int SERVERS_PORT;
 	private MulticastSocket multicast;
 	public String IP;
+	
 	public Hashtable<Integer, ObjectOutputStream> usersTable;
 	
 	private Queue queue;
 	private Queue ack;
 	
-	private List<Message> ackList;
 	private Hashtable<Integer, Integer> storage;
-	private List<Message> receivedMessages;
 	
 	public Set<String> servers;
-	public SharedContent valid;
-	public SharedContent db;
 	
 	private Server server;
 	Hashtable<String, Integer> progressTable;
@@ -47,7 +41,7 @@ public class Receiver extends Thread {
 		multicast.joinGroup(group);		
 		IP = InetAddress.getLocalHost().getHostAddress();
 		
-		//servers = otherServers; -----------------------------------------------
+		//servers
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
 		servers.add("192.168.1.221");
@@ -56,16 +50,10 @@ public class Receiver extends Thread {
 		this.ack = new Queue("ack");
 		
 		this.server = server;
-		
-		ackList = new ArrayList<>();
+
 		storage = new Hashtable<>();
-		receivedMessages = new ArrayList<>();
-		valid = new SharedContent(false);
-		db = new SharedContent(storage);
 		
-		new AlivenessSender().start();
-		//new AlivenessChecker(SERVERS_PORT, servers, valid).start();
-		new StorageUpdater(db).start();
+		new Ticker().start();
 		
 		progressTable = new Hashtable<>();
 	}
@@ -142,15 +130,23 @@ public class Receiver extends Thread {
 				
 				// *************************************************************************************************************************
 				
-				if (mess.isRetransmit == true && !mess.source.equals(IP)) {
+				if (mess.isRetransmit == true) {
 					// gestione ritrasmisisone. Uso il campo id per la trasmissione dell'hash del messaggio da rimandare
 					// invio sia il messaggio sia l'ack
-					Message toSendM = messages.get(mess.id);
-					Message toSendA = acks.get(mess.id);
-					sendMulticast(toSendM);
-					sendMulticast(toSendA);
 					
-					System.out.println("Ricevuta richiesta di ritrasmissione dei messaggi: ");toSendM.print();toSendA.print();
+					// prima controllo se ho il messaggio
+					boolean gotIt = messages.containsKey(mess.id);
+					
+					// se lo ho invio tutto altrimenti significa che ho perso il messaggio primario. In quel caso resto in attesa che
+					// il mittente me lo rimandi
+					if (gotIt) {
+						Message toSendM = messages.get(mess.id);
+						Message toSendA = acks.get(mess.id);
+						sendMulticast(toSendM);
+						sendMulticast(toSendA);
+						
+						System.out.println("Ricevuta richiesta di ritrasmissione dei messaggi: ");toSendM.print();toSendA.print();
+					}
 				}
 				
 				// *************************************************************************************************************************
@@ -169,12 +165,6 @@ public class Receiver extends Thread {
 						knownServers.put(sender, 1);
 						expectedClock = 1;
 					}
-					/*else if(knownServers.containsKey(sender) == true && knownServers.get(sender) > 1 && mess.local_clock == 1) {
-						// in questo caso un server era attivo, aveva un local clock positivo e poi è morto. Quando torna attivo
-						// il suo local clock sarà 1. Se leggo uno capisco che è tornato attivo e resetto il suo contatore
-						knownServers.put(sender, mess.local_clock);
-						expectedClock = mess.local_clock;
-					}*/
 					else {
 						expectedClock = knownServers.get(sender);
 					}

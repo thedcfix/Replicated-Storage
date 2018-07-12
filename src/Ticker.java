@@ -5,7 +5,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
-public class AlivenessSender extends Thread {
+public class Ticker extends Thread {
 	
 	private int WINDOW = 2;
 	private int SYNC_PORT = 8501;//8504;
@@ -14,7 +14,7 @@ public class AlivenessSender extends Thread {
 	private MulticastSocket multicast;
 	public String IP;
 	
-	public AlivenessSender() throws IOException {
+	public Ticker() throws IOException {
 		group = InetAddress.getByName("224.0.5.1");
 		multicast = new MulticastSocket(SYNC_PORT);
 		multicast.joinGroup(group);		
