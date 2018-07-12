@@ -50,7 +50,7 @@ public class Receiver extends Thread {
 		//servers = otherServers; -----------------------------------------------
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
-		servers.add("192.168.1.222");
+		servers.add("192.168.1.221");
 		
 		this.queue = queue;
 		this.ack = new Queue("ack");
@@ -150,7 +150,7 @@ public class Receiver extends Thread {
 					sendMulticast(toSendM);
 					sendMulticast(toSendA);
 					
-					System.out.println("Ricevuta richiesta di ritrasmissione del messaggio: ");toSendM.print();
+					System.out.println("Ricevuta richiesta di ritrasmissione dei messaggi: ");toSendM.print();toSendA.print();
 				}
 				
 				// *************************************************************************************************************************
@@ -259,26 +259,27 @@ public class Receiver extends Thread {
 					}
 					
 					
-					
-					queue.print();
-					ack.print();
-					
-					// separatore iterazioni
-					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
-					
-					if (isFullyAcknowledged(queue.getFirst(), ack)) {
-						Message toExecute = queue.removeFirst();
-						ack.removeExecuted(toExecute);
-						storage.put(toExecute.id, toExecute.value);
+					if (queue.isEmpty() == false) {
+						queue.print();
+						ack.print();
+						
+						// separatore iterazioni
+						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+						
+						if (isFullyAcknowledged(queue.getFirst(), ack)) {
+							Message toExecute = queue.removeFirst();
+							ack.removeExecuted(toExecute);
+							storage.put(toExecute.id, toExecute.value);
+							
+							
+							
+							System.out.println("Messaggio eseguito: " + storage.toString());
+						}
 						
 						
-						
-						System.out.println("Messaggio eseguito: " + storage.toString());
+						// separatore iterazioni
+						System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 					}
-					
-					
-					// separatore iterazioni
-					System.out.println("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 				}
 				else {
 					// ho ricevuto un messaggio di unlock

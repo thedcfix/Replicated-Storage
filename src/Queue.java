@@ -62,12 +62,12 @@ public class Queue {
 	
 	public List<Message> extractSublist(Message mess) {
 		
-		int finalIdx = 0;
+		List<Message> msgs = new ArrayList<>();
 		
 		if (!queue.isEmpty()) {
 			for(Message m : queue) {
 				if (m.equalsUltraLite(mess)) {
-					finalIdx++;
+					msgs.add(m);
 				}
 				else {
 					break;
@@ -75,7 +75,7 @@ public class Queue {
 			}
 		}
 		
-		return queue.subList(0, finalIdx);
+		return msgs;
 		
 	}
 	
