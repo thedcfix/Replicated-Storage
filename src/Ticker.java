@@ -2,6 +2,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
@@ -23,24 +24,26 @@ public class Ticker extends Thread {
 		IP = InetAddress.getLocalHost().getHostAddress();
 	}
 	
-	public void sendMulticast(Message msg) throws IOException, InterruptedException {
+	public void send(Message msg) throws IOException, InterruptedException {
 		
-		msg.source = IP;
-		
+		DatagramSocket socket = new DatagramSocket();
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
 		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		
 		oos.writeObject(msg);
-		byte[] data = baos.toByteArray();
+		byte[] data_r = baos.toByteArray();
+		InetAddress addr = InetAddress.getByName("localhost");
+		DatagramPacket packet = new DatagramPacket(data_r, data_r.length, addr, SERVERS_PORT);
 		
-		DatagramPacket packet = new DatagramPacket(data, data.length, group, SERVERS_PORT);
-		
-		multicast.send(packet);
+		socket.send(packet);
+		Thread.sleep(500);
+		socket.close();
 	}
 	
 	public void run() {
 		while(true) {
 			try {
-				sendMulticast(new Message("unlock"));
+				send(new Message("unlock"));
 				Thread.sleep(WINDOW * 1000);
 			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
