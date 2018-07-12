@@ -8,15 +8,17 @@ import java.net.MulticastSocket;
 public class Ticker extends Thread {
 	
 	private int WINDOW = 2;
-	private int SYNC_PORT = 8501;//8504;
+	private int SERVERS_PORT;
 	
 	private InetAddress group;
 	private MulticastSocket multicast;
 	public String IP;
 	
-	public Ticker() throws IOException {
+	public Ticker(int port) throws IOException {
+		SERVERS_PORT = port;
+		
 		group = InetAddress.getByName("224.0.5.1");
-		multicast = new MulticastSocket(SYNC_PORT);
+		multicast = new MulticastSocket(SERVERS_PORT);
 		multicast.joinGroup(group);		
 		IP = InetAddress.getLocalHost().getHostAddress();
 	}
@@ -30,10 +32,9 @@ public class Ticker extends Thread {
 		oos.writeObject(msg);
 		byte[] data = baos.toByteArray();
 		
-		DatagramPacket packet = new DatagramPacket(data, data.length, group, SYNC_PORT);
+		DatagramPacket packet = new DatagramPacket(data, data.length, group, SERVERS_PORT);
 		
 		multicast.send(packet);
-		Thread.sleep(500);
 	}
 	
 	public void run() {

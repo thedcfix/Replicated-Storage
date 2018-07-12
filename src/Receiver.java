@@ -53,7 +53,7 @@ public class Receiver extends Thread {
 
 		storage = new Hashtable<>();
 		
-		new Ticker().start();
+		new Ticker(SERVERS_PORT).start();
 		
 		progressTable = new Hashtable<>();
 	}

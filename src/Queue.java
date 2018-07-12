@@ -28,12 +28,6 @@ public class Queue {
 		}
 	}
 	
-	public void increaseCycle() {
-		synchronized (lock) {
-			cycle++;
-		}
-	}
-	
 	public Message getFirst() {
 		
 		synchronized(lock) {
@@ -129,7 +123,9 @@ public class Queue {
 	}
 	
 	public void tick() {
-		this.cycle++;
+		synchronized (lock) {
+			cycle++;
+		}
 	}
 	
 	// se un messaggio è in coda da più di 2 cicli chiedo la ritrasmissione
