@@ -69,9 +69,6 @@ public class Queue {
 				if (m.equalsUltraLite(mess)) {
 					msgs.add(m);
 				}
-				else {
-					break;
-				}
 			}
 		}
 		
