@@ -50,7 +50,7 @@ public class Receiver extends Thread {
 		//servers = otherServers; -----------------------------------------------
 		servers = new HashSet<>();
 		servers.add("192.168.1.176");
-		//servers.add("192.168.1.222");
+		servers.add("192.168.1.222");
 		
 		this.queue = queue;
 		this.ack = new Queue("ack");
