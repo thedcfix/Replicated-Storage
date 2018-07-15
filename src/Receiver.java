@@ -43,8 +43,8 @@ public class Receiver extends Thread {
 		
 		//servers
 		servers = new HashSet<>();
-		servers.add("192.168.1.176");
-		servers.add("192.168.1.221");
+		servers.add("192.168.43.81");
+		servers.add("192.168.43.17");
 		
 		this.queue = queue;
 		this.ack = new Queue("ack");
@@ -59,7 +59,7 @@ public class Receiver extends Thread {
 	}
 	
 	// ricevo i messaggi inviati sulla SERVERS_PORT
-	public Message receiveMessage(byte[] buff) throws IOException, ClassNotFoundException {
+	private Message receiveMessage(byte[] buff) throws IOException, ClassNotFoundException {
 		DatagramPacket recv = new DatagramPacket(buff, buff.length);
 		multicast.receive(recv);
 		
@@ -72,7 +72,7 @@ public class Receiver extends Thread {
 	}
 	
 	// manda un messaggio in multicast
-	public void sendMulticast(Message msg) throws IOException, InterruptedException {
+	private void sendMulticast(Message msg) throws IOException, InterruptedException {
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
 		ObjectOutputStream oos = new ObjectOutputStream(baos);
@@ -85,7 +85,7 @@ public class Receiver extends Thread {
 	}
 	
 	// verifico se un messaggio ha tutti gli ack
-	public boolean isFullyAcknowledged(Message msg, Queue ack) throws InterruptedException {
+	private boolean isFullyAcknowledged(Message msg, Queue ack) throws InterruptedException {
 		
 		if (msg == null)
 			return false;
@@ -182,47 +182,63 @@ public class Receiver extends Thread {
 					// se è valido lo processo, altrimenti non lo considero
 					if (mess.valid) {
 						
+						mess.print();
+						
 						// ora controllo se è un ack o un messaggio
 						if(mess.isAck == false) {
 							
-							System.out.println("--- Ricevuto messaggio ---");
-							
-							// lo aggiungo all'elenco dei messaggi ricevuti
-							messages.put(mess.getLightVersionHash(), mess);
-							
-							// se non è già presente ed è valido lo aggiungo (poi pulisco nel caso sia già stato processato in passato)
-							if(!queue.isAlreadyPresent(mess)) {
-								queue.add(mess);
+							if(mess.type.equals("read") && mess.source.equals(IP)) {
+								// se é una read rispondo immediatamente al client
+								// la risposta avviene solo in locale ma tutti ricevono il messaggio e aggiornano il local clock di questo server
+								Message inProcessing = queue.getInProcessing(mess);
+								
+								if (inProcessing == null) {
+									// significa che il messaggio richiesto non é in coda ma é stabile nel DB
+									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, storage.get(mess.id)));
+								}
+								else {
+									// il messaggio cercato é ancora in coda, restituisco il valore
+									usersTable.get(mess.clientID).writeObject(new Message("response", mess.id, inProcessing.value));
+								}
+								
+								queue.removeExecuted(mess);
 							}
-							else if (mess.valid){
-								// se il messaggio è valido e ne ho una copia in coda che non lo è, la rendo valida
-								queue.makeValid(mess);
+							else if (mess.type.equals("write")){
+								// se é una write la processo
+								
+								System.out.println("--- Ricevuto messaggio ---");
+								
+								// lo aggiungo all'elenco dei messaggi ricevuti
+								messages.put(mess.getLightVersionHash(), mess);
+								
+								// se non è già presente ed è valido lo aggiungo (poi pulisco nel caso sia già stato processato in passato)
+								if(!queue.isAlreadyPresent(mess)) {
+									queue.add(mess);
+								}
+								else if (mess.valid){
+									// se il messaggio è valido e ne ho una copia in coda che non lo è, la rendo valida
+									queue.makeValid(mess);
+								}
+								
+								// rispondo col mio ack
+								Message ackMsg = new Message(mess);
+								
+								ackMsg.isAck = true;
+								ackMsg.sender = IP;
+								ackMsg.valid = false;
+								ackMsg.lamport_clock = server.getLamportClock();
+								ackMsg.local_clock = server.getLocalClock();
+								
+								// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
+								acks.put(ackMsg.getLightVersionHash(), ackMsg);
+								
+								// invio il mio messaggio di ack
+								if (!mess.type.equals("read")) {
+									sendMulticast(ackMsg);
+								}
+								
+								System.out.println("--- Inviato multicast ---");
 							}
-							
-							/*
-							 * 
-							 * Inserire la parte di risposta alle read
-							 * 
-							 */
-							
-							// rispondo col mio ack
-							Message ackMsg = new Message(mess);
-							
-							ackMsg.isAck = true;
-							ackMsg.sender = IP;
-							ackMsg.valid = false;
-							ackMsg.lamport_clock = server.getLamportClock();
-							ackMsg.local_clock = server.getLocalClock();
-							
-							// aggingo il messaggio alla hashtable così da poterlo re-inviare in caso di retransmit
-							acks.put(ackMsg.getLightVersionHash(), ackMsg);
-							
-							// invio il mio messaggio di ack
-							if (!mess.type.equals("read")) {
-								sendMulticast(ackMsg);
-							}
-							
-							System.out.println("--- Inviato multicast ---");
 						}
 						else {
 							

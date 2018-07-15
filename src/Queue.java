@@ -144,4 +144,24 @@ public class Queue {
 		else 
 			return -1;
 	}
+	
+	public Message getInProcessing(Message msg) {
+		
+		Message found = null;
+		int lamport = msg.lamport_clock;
+		int id = msg.id;
+		
+		for(Message m : queue) {
+			if (m.lamport_clock < lamport) {
+				if (m.id == id) {
+					found = m;
+				}
+			}
+			else{
+				break;
+			}
+		}
+		
+		return found;
+	}
 }
